@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key><string>de</string>
+	<key>CFBundleExecutable</key><string>Klar</string>
+	<key>CFBundleIdentifier</key><string>de.felixsiebrasse.klar</string>
+	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+	<key>CFBundleName</key><string>Klar</string>
+	<key>CFBundleDisplayName</key><string>Klar</string>
+	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleShortVersionString</key><string>0.1.0</string>
+	<key>CFBundleVersion</key><string>1</string>
+	<key>CFBundleIconFile</key><string>AppIcon</string>
+	<key>LSMinimumSystemVersion</key><string>14.0</string>
+	<key>LSUIElement</key><true/>
+	<key>NSHighResolutionCapable</key><true/>
+	<key>NSPrincipalClass</key><string>NSApplication</string>
+	<key>NSMicrophoneUsageDescription</key><string>Klar benötigt das Mikrofon für Diktate und Meeting-Transkriptionen.</string>
+	<key>NSSpeechRecognitionUsageDescription</key><string>Klar wandelt deine Sprache lokal auf dem Gerät in Text um.</string>
+	<key>NSAppleEventsUsageDescription</key><string>Klar fügt Text in die aktive App ein.</string>
+</dict>
+</plist>

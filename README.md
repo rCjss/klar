@@ -4,8 +4,7 @@ Minimalistische Menüleisten-App für macOS: Zwischenablage-Verlauf, Diktat mit 
 Meeting-Transkription mit Zusammenfassung, GIF-Suche und Bildschirmaufnahme mit Systemton.
 Schwarz-Weiß, viel Weißraum, keine Deko.
 
-Klar ist ein persönliches Projekt von Jasper Felix Siebrasse und wird hier öffentlich und kostenlos
-bereitgestellt. Wenn dir die App gefällt, freue ich mich über einen ⭐ Stern für dieses Repository
+Klar ist ein privates Projekt und wird hier öffentlich und kostenlos bereitgestellt. Wenn dir die App gefällt, freue ich mich über einen ⭐ Stern für dieses Repository
 oder ein Follow – das ist die Währung auf GitHub und hilft anderen, Klar zu finden.
 
 ## Haftungsausschluss
@@ -113,7 +112,7 @@ developers.giphy.com → „Create an App“ → API → Key kopieren.
 
 - Verlauf, Diktate, Transkripte, GIFs: `~/Library/Application Support/Klar/` (nur für den eigenen Benutzer lesbar)
 - Aufnahmen: `~/Movies/Klar/`
-- API-Schlüssel (Claude, Giphy): macOS-Schlüsselbund, Dienst `de.felixsiebrasse.klar`
+- API-Schlüssel (Claude, Giphy): macOS-Schlüsselbund (Eintrag „Klar“ mit der Bundle-ID der App)
 
 ## Sicherheit und Datenabflüsse
 

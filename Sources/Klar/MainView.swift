@@ -487,7 +487,7 @@ import AppKit
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
-                PageTitle(title: "Wach", subtitle: "Hält Mac und Bildschirm wach – \(settings.awakeHotkey.display) schaltet um.")
+                PageTitle(title: "Cocaine", subtitle: "Hält Mac und Bildschirm wach – \(settings.awakeHotkey.display) schaltet um.")
                 Spacer()
                 if awake.isActive {
                     PlainTextButton(title: "Beenden", prominent: true) { awake.stop() }
@@ -516,8 +516,16 @@ import AppKit
             DotToggle(isOn: $settings.awakeKeepsDisplay, label: "Bildschirm ebenfalls wach halten")
                 .padding(.bottom, 14)
             DotToggle(isOn: $settings.awakeDuringCapture, label: "Während Meetings und Bildschirmaufnahmen automatisch wach halten")
-                .padding(.bottom, 24)
-            Text("Zugeklappt schläft ein MacBook trotzdem, außer es hängt am Netzteil und an einem externen Bildschirm. Nach Ablauf der Zeit gelten wieder die normalen Energieeinstellungen.")
+                .padding(.bottom, 14)
+            DotToggle(isOn: Binding(get: { awake.lidMode }, set: { awake.setLidMode($0) }),
+                      label: "Zugeklappt weiterlaufen (Deckel-Modus)")
+                .padding(.bottom, 10)
+            if let e = awake.lidError {
+                Text(e).font(Theme.small).foregroundColor(Theme.ink).padding(.bottom, 10)
+            }
+            Text(awake.lidMode
+                 ? "Deckel-Modus aktiv: Der Mac schläft auch zugeklappt nicht. Nicht zugeklappt in die Tasche stecken – er wird warm. Endet mit „Beenden“, nach Ablauf der Zeit oder beim Beenden von Klar."
+                 : "Ohne Deckel-Modus schläft ein zugeklapptes MacBook, außer es hängt am Netzteil und an einem externen Bildschirm. Der Deckel-Modus ändert eine Systemeinstellung und fragt deshalb nach dem Administrator-Passwort.")
                 .font(Theme.small).foregroundColor(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer()

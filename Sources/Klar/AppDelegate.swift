@@ -45,6 +45,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        AwakeManager.shared.releaseLidModeOnQuit()
+    }
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         showMainWindow()
         return true
@@ -199,7 +203,7 @@ enum Section: String, CaseIterable, Identifiable {
     case dictations = "Diktate"
     case meetings = "Meetings"
     case recordings = "Aufnahmen"
-    case awake = "Wach"
+    case awake = "Cocaine"
     case settings = "Einstellungen"
     var id: String { rawValue }
 }

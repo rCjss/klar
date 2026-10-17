@@ -16,6 +16,11 @@ final class AwakeManager: ObservableObject {
     @Published private(set) var autoHold = false
     /// Tickt jede Sekunde, damit Anzeigen der Restzeit aktuell bleiben.
     @Published private(set) var tick = 0
+    /// Deckel-Modus: Der Mac läuft auch zugeklappt weiter (ohne externen Bildschirm).
+    /// Setzt systemweit „SleepDisabled“ – braucht das Admin-Passwort, wie bei Amphetamine.
+    @Published private(set) var lidMode = false
+    @Published var lidError: String?
+    @Published private(set) var lidBusy = false
 
     static let durations: [(label: String, seconds: TimeInterval)] = [
         ("15 Min", 15 * 60), ("30 Min", 30 * 60), ("1 Std", 3600),
@@ -27,7 +32,13 @@ final class AwakeManager: ObservableObject {
     private var expiry: Timer?
     private var ticker: Timer?
 
-    private init() {}
+    private init() {
+        // Nach Absturz oder Neustart: Zustand aus dem System übernehmen.
+        let armed = UserDefaults.standard.bool(forKey: "lidModeArmed")
+        let disabled = Self.systemSleepDisabled()
+        lidMode = armed && disabled
+        if armed && !disabled { UserDefaults.standard.set(false, forKey: "lidModeArmed") }
+    }
 
     var isHolding: Bool { isActive || autoHold }
 
@@ -51,6 +62,55 @@ final class AwakeManager: ObservableObject {
         expiry?.invalidate()
         expiry = nil
         apply()
+        if lidMode { setLidMode(false) }
+    }
+
+    // MARK: Deckel-Modus
+
+    /// Liest „SleepDisabled“ aus der Power-Management-Domäne des Kernels.
+    nonisolated static func systemSleepDisabled() -> Bool {
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
+        guard service != 0 else { return false }
+        defer { IOObjectRelease(service) }
+        let value = IORegistryEntryCreateCFProperty(service, "SleepDisabled" as CFString, kCFAllocatorDefault, 0)?
+            .takeRetainedValue()
+        return (value as? Bool) ?? false
+    }
+
+    /// Schaltet den Deckel-Modus um. macOS fragt nach dem Administrator-Passwort.
+    func setLidMode(_ on: Bool) {
+        guard !lidBusy, on != lidMode else { return }
+        lidBusy = true
+        lidError = nil
+        if on, !isActive { start(duration: nil) }
+        Task.detached {
+            let script = "do shell script \"/usr/bin/pmset disablesleep \(on ? 1 : 0)\" with administrator privileges"
+            var error: NSDictionary?
+            NSAppleScript(source: script)?.executeAndReturnError(&error)
+            let ok = error == nil && Self.systemSleepDisabled() == on
+            let message = (error?[NSAppleScript.errorMessage] as? String) ?? ""
+            await MainActor.run {
+                self.lidBusy = false
+                if ok {
+                    self.lidMode = on
+                    UserDefaults.standard.set(on, forKey: "lidModeArmed")
+                } else if message.contains("-128") || message.localizedCaseInsensitiveContains("abgebrochen") || message.localizedCaseInsensitiveContains("cancel") {
+                    // Passwortdialog abgebrochen – kein Fehler.
+                } else {
+                    self.lidError = message.isEmpty ? "Deckel-Modus konnte nicht geändert werden." : message
+                }
+                self.objectWillChange.send()
+            }
+        }
+    }
+
+    /// Beim Beenden der App: Deckel-Modus nie aktiv zurücklassen.
+    func releaseLidModeOnQuit() {
+        guard lidMode else { return }
+        let script = "do shell script \"/usr/bin/pmset disablesleep 0\" with administrator privileges"
+        var error: NSDictionary?
+        NSAppleScript(source: script)?.executeAndReturnError(&error)
+        if error == nil { UserDefaults.standard.set(false, forKey: "lidModeArmed") }
     }
 
     func toggle() {
@@ -71,7 +131,7 @@ final class AwakeManager: ObservableObject {
     var statusText: String {
         if isActive {
             if let end = until { return "Wach bis \(Format.time.string(from: end)) · noch \(remainingText(end))" }
-            return "Wach, unbegrenzt"
+            return lidMode ? "Wach, unbegrenzt – auch zugeklappt" : "Wach, unbegrenzt"
         }
         if autoHold { return "Wach, solange Meeting oder Aufnahme läuft" }
         return "Der Mac darf schlafen."
@@ -79,10 +139,10 @@ final class AwakeManager: ObservableObject {
 
     var menuTitle: String {
         if isActive {
-            if let end = until { return "Wach bis \(Format.time.string(from: end))" }
-            return "Wach (unbegrenzt)"
+            if let end = until { return "Cocaine bis \(Format.time.string(from: end))" }
+            return "Cocaine (unbegrenzt)"
         }
-        return "Wach halten"
+        return "Cocaine"
     }
 
     private func remainingText(_ end: Date) -> String {

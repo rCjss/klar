@@ -47,7 +47,7 @@ import AppKit
             Spacer()
             VStack(alignment: .leading, spacing: 6) {
                 Text("Jasper Felix Siebrasse").font(Theme.small).foregroundColor(Theme.faint)
-                Text("v0.1").font(Theme.small).foregroundColor(Theme.faint)
+                Text("v" + (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0")).font(Theme.small).foregroundColor(Theme.faint)
             }
             .padding(.leading, 48).padding(.bottom, 32)
         }

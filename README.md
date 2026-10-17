@@ -1,8 +1,12 @@
 # Klar
 
+**Flow state for you and your Mac.**
+
 Minimalistische Menüleisten-App für macOS: Zwischenablage-Verlauf, Diktat mit Sprachbefehlen,
-Meeting-Transkription mit Zusammenfassung, GIF-Suche und Bildschirmaufnahme mit Systemton.
-Schwarz-Weiß, viel Weißraum, keine Deko.
+Meeting-Transkription mit Zusammenfassung, GIF-Suche, Bildschirmaufnahme mit Systemton und
+„Cocaine“ zum Wachhalten. Schwarz-Weiß, viel Weißraum, keine Deko.
+
+Aktuelle Version: 0.2.0 – siehe [CHANGELOG](CHANGELOG.md).
 
 Klar ist ein privates Projekt und wird hier öffentlich und kostenlos bereitgestellt. Wenn dir die App gefällt, freue ich mich über einen ⭐ Stern für dieses Repository
 oder ein Follow – das ist die Währung auf GitHub und hilft anderen, Klar zu finden.

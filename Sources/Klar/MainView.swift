@@ -121,6 +121,13 @@ import AppKit
 @MainActor struct ClipRow: View {
     let item: ClipItem
     @State private var hover = false
+    @State private var copied = false
+
+    private func copy() {
+        Paster.write(item)
+        copied = true
+        Task { try? await Task.sleep(nanoseconds: 1_200_000_000); copied = false }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -146,16 +153,22 @@ import AppKit
                 }
                 Spacer()
                 HStack(spacing: 18) {
-                    PlainTextButton(title: "Kopieren") { Paster.write(item) }
+                    if copied {
+                        Text("Kopiert").font(Theme.small).foregroundColor(Theme.ink)
+                    } else {
+                        PlainTextButton(title: "Kopieren") { copy() }
+                    }
                     PlainTextButton(title: item.pinned ? "Lösen" : "Anpinnen") { ClipboardStore.shared.togglePin(item.id) }
                     PlainTextButton(title: "Löschen") { ClipboardStore.shared.remove(item.id) }
                 }
-                .opacity(hover ? 1 : 0)
+                .opacity(hover || copied ? 1 : 0)
             }
             .padding(.vertical, 16)
             HairlineDivider()
         }
         .contentShape(Rectangle())
+        // Ein Klick auf die Zeile kopiert sofort; die Buttons rechts bleiben für Anpinnen und Löschen.
+        .onTapGesture { copy() }
         .onHover { hover = $0 }
     }
 }

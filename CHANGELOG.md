@@ -2,6 +2,10 @@
 
 Alle nennenswerten Änderungen an Klar. Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/).
 
+## Unveröffentlicht
+
+- Im Fenster „Zwischenablage“ kopiert ein Klick auf die Zeile sofort; kurze Rückmeldung „Kopiert“.
+
 ## 0.2.0 – 2026-10-17
 
 ### Neu

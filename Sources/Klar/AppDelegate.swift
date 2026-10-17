@@ -29,6 +29,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         dnc.addObserver(forName: Notification.Name("de.felixsiebrasse.klar.showSettings"), object: nil, queue: .main) { _ in
             Task { @MainActor in AppDelegate.shared?.showMainWindow(section: .settings) }
         }
+        dnc.addObserver(forName: Notification.Name("de.felixsiebrasse.klar.showAwake"), object: nil, queue: .main) { _ in
+            Task { @MainActor in AppDelegate.shared?.showMainWindow(section: .awake); AwakeManager.shared.start(duration: 1800) }
+        }
         dnc.addObserver(forName: Notification.Name("de.felixsiebrasse.klar.showGifs"), object: nil, queue: .main) { _ in
             Task { @MainActor in AppDelegate.shared?.clipboardPanel.show(tab: .gifs) }
         }
@@ -59,9 +62,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func refreshStatusIcon() {
         let name: String
+        // Meeting und Aufnahme halten den Mac automatisch wach.
+        AwakeManager.shared.setAutoHold(MeetingRecorder.shared.isRunning || ScreenRecorder.shared.isRecording)
         if ScreenRecorder.shared.isRecording { name = "record.circle.fill" }
         else if DictationEngine.shared.isListening { name = "waveform" }
         else if MeetingRecorder.shared.isRunning { name = "waveform.circle" }
+        else if AwakeManager.shared.isActive { name = "sun.max" }
         else { name = "circle" }
         let image = NSImage(systemSymbolName: name, accessibilityDescription: "Klar")
         image?.isTemplate = true
@@ -74,6 +80,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: (DictationEngine.shared.isListening ? "Diktat beenden  " : "Diktat starten  ") + settings.dictationHotkey.display, action: #selector(menuDictation), keyEquivalent: "")
         menu.addItem(withTitle: (MeetingRecorder.shared.isRunning ? "Meeting-Transkription beenden  " : "Meeting transkribieren  ") + settings.meetingHotkey.display, action: #selector(menuMeeting), keyEquivalent: "")
         menu.addItem(withTitle: (ScreenRecorder.shared.isRecording ? "Aufnahme beenden  " : "Bildschirm aufnehmen  ") + settings.recordingHotkey.display, action: #selector(menuRecording), keyEquivalent: "")
+        menu.addItem(.separator())
+        let awake = AwakeManager.shared
+        let awakeItem = NSMenuItem(title: awake.menuTitle + "  " + settings.awakeHotkey.display, action: nil, keyEquivalent: "")
+        let sub = NSMenu()
+        if awake.isActive {
+            sub.addItem(withTitle: "Beenden", action: #selector(menuAwakeStop), keyEquivalent: "")
+            sub.addItem(.separator())
+        }
+        let indefinite = sub.addItem(withTitle: "Unbegrenzt", action: #selector(menuAwake(_:)), keyEquivalent: "")
+        indefinite.tag = 0
+        for (i, d) in AwakeManager.durations.enumerated() {
+            let item = sub.addItem(withTitle: d.label, action: #selector(menuAwake(_:)), keyEquivalent: "")
+            item.tag = i + 1
+        }
+        for item in sub.items { item.target = self }
+        awakeItem.submenu = sub
+        menu.addItem(awakeItem)
         menu.addItem(.separator())
         menu.addItem(withTitle: "Klar öffnen", action: #selector(menuOpen), keyEquivalent: "")
         menu.addItem(withTitle: "Einstellungen", action: #selector(menuSettings), keyEquivalent: ",")
@@ -90,6 +113,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func menuDictation() { DictationEngine.shared.toggle() }
     @objc private func menuMeeting() { MeetingRecorder.shared.toggle(); showMainWindow(section: .meetings) }
     @objc private func menuRecording() { ScreenRecorder.shared.toggle() }
+    @objc private func menuAwake(_ sender: NSMenuItem) {
+        let d = sender.tag == 0 ? nil : AwakeManager.durations[sender.tag - 1].seconds
+        AwakeManager.shared.start(duration: d)
+    }
+    @objc private func menuAwakeStop() { AwakeManager.shared.stop() }
     @objc private func menuOpen() { showMainWindow() }
     @objc private func menuSettings() { showMainWindow(section: .settings) }
 
@@ -104,6 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                onCancel: { DictationEngine.shared.hotkeyCancelled() })
         hk.set(id: HotkeyID.meeting, hotkey: settings.meetingHotkey) { MeetingRecorder.shared.toggle() }
         hk.set(id: HotkeyID.recording, hotkey: settings.recordingHotkey) { ScreenRecorder.shared.toggle() }
+        hk.set(id: HotkeyID.awake, hotkey: settings.awakeHotkey) { AwakeManager.shared.toggle() }
     }
 
     private var observers: [Any] = []
@@ -112,6 +141,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         observers.append(settings.$dictationHotkey.dropFirst().sink { [weak self] _ in Task { @MainActor in self?.registerHotkeys() } })
         observers.append(settings.$meetingHotkey.dropFirst().sink { [weak self] _ in Task { @MainActor in self?.registerHotkeys() } })
         observers.append(settings.$recordingHotkey.dropFirst().sink { [weak self] _ in Task { @MainActor in self?.registerHotkeys() } })
+        observers.append(settings.$awakeHotkey.dropFirst().sink { [weak self] _ in Task { @MainActor in self?.registerHotkeys() } })
+        observers.append(settings.$awakeKeepsDisplay.dropFirst().sink { _ in Task { @MainActor in AwakeManager.shared.refresh() } })
+        observers.append(settings.$awakeDuringCapture.dropFirst().sink { _ in Task { @MainActor in AppDelegate.shared?.refreshStatusIcon() } })
         observers.append(settings.$showInDock.dropFirst().sink { [weak self] _ in Task { @MainActor in self?.applyDockSetting() } })
     }
 
@@ -167,6 +199,7 @@ enum Section: String, CaseIterable, Identifiable {
     case dictations = "Diktate"
     case meetings = "Meetings"
     case recordings = "Aufnahmen"
+    case awake = "Wach"
     case settings = "Einstellungen"
     var id: String { rawValue }
 }

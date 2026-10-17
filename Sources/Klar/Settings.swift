@@ -9,6 +9,9 @@ final class Settings: ObservableObject {
     @Published var dictationHotkey: Hotkey { didSet { save("dictationHotkey", dictationHotkey) } }
     @Published var meetingHotkey: Hotkey { didSet { save("meetingHotkey", meetingHotkey) } }
     @Published var recordingHotkey: Hotkey { didSet { save("recordingHotkey", recordingHotkey) } }
+    @Published var awakeHotkey: Hotkey { didSet { save("awakeHotkey", awakeHotkey) } }
+    @Published var awakeKeepsDisplay: Bool { didSet { d.set(awakeKeepsDisplay, forKey: "awakeKeepsDisplay") } }
+    @Published var awakeDuringCapture: Bool { didSet { d.set(awakeDuringCapture, forKey: "awakeDuringCapture") } }
     @Published var snippets: [Snippet] { didSet { save("snippets", snippets) } }
     @Published var localeIdentifier: String { didSet { d.set(localeIdentifier, forKey: "locale") } }
     @Published var commandPrefix: String { didSet { d.set(commandPrefix, forKey: "commandPrefix") } }
@@ -26,6 +29,9 @@ final class Settings: ObservableObject {
         dictationHotkey = Self.load("dictationHotkey") ?? .dictationDefault
         meetingHotkey = Self.load("meetingHotkey") ?? .meetingDefault
         recordingHotkey = Self.load("recordingHotkey") ?? .recordingDefault
+        awakeHotkey = Self.load("awakeHotkey") ?? .awakeDefault
+        awakeKeepsDisplay = d.object(forKey: "awakeKeepsDisplay") as? Bool ?? true
+        awakeDuringCapture = d.object(forKey: "awakeDuringCapture") as? Bool ?? true
         snippets = Self.load("snippets") ?? [
             Snippet(trigger: "Signatur", text: "Viele Grüße\n" + NSFullUserName()),
         ]

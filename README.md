@@ -25,6 +25,8 @@ Die Nutzung erfolgt auf eigenes Risiko. Sicherheitsrelevante Hinweise siehe unte
   über Apple Intelligence, Claude Code (Abo) oder die Claude-API
 - **GIFs** – Giphy-Suche direkt im Panel, Einfügen als Datei
 - **Bildschirmaufnahme** – mit Systemton, optional Mikrofon, als .mov in `~/Movies/Klar`
+- **Wach** – hält Mac und Bildschirm wach wie Amphetamine: 15 Minuten bis 8 Stunden oder unbegrenzt, per Hotkey,
+  Menü oder Fenster; während Meetings und Aufnahmen automatisch
 
 ## Voraussetzungen
 
@@ -82,6 +84,7 @@ diktierter oder gewählter Text nur in der Zwischenablage.
 | Diktat (tippen = Start/Stopp, halten = Push-to-Talk) | ⌥Space |
 | Meeting transkribieren | ⌥⇧⌘M |
 | Bildschirm aufnehmen | ⌥⇧⌘R |
+| Wach halten an/aus | ⌥⇧⌘W |
 
 Im Panel: ↑↓ wählen, ↩ einfügen, ⌘↩ nur kopieren, ⌘P oder Stecknadel anpinnen, ⌘⌫ löschen, ⌘1–9 Schnellwahl,
 tippen = suchen. Klick auf einen Eintrag fügt ihn ein und rückt ihn nach oben. Angepinnte Einträge bleiben
@@ -102,6 +105,13 @@ offene Fragen). Drei Wege, in den Einstellungen wählbar:
 - **Claude Code** – nutzt die installierte Claude-Code-Kommandozeile und damit ein Claude-Abo, kein Schlüssel nötig
 - **Claude-API** – eigener API-Schlüssel, wird im Schlüsselbund abgelegt
 - **Apple Intelligence** – lokal, ohne Netz (macOS 26, Apple Intelligence aktiviert)
+
+## Wach halten
+
+Über das Menüleisten-Symbol → „Wach halten“ eine Dauer wählen, oder im Fenster unter „Wach“. Der Hotkey schaltet
+unbegrenztes Wachhalten an und aus. Solange aktiv, zeigt die Menüleiste eine Sonne. Klar setzt dafür dieselben
+Power-Assertions wie `caffeinate`, sichtbar mit `pmset -g assertions`. Ein zugeklapptes MacBook schläft trotzdem,
+außer es hängt an Netzteil und externem Bildschirm.
 
 ## GIFs
 

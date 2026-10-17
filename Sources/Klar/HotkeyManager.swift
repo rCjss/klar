@@ -135,4 +135,5 @@ enum HotkeyID {
     static let dictation: UInt32 = 2
     static let meeting: UInt32 = 3
     static let recording: UInt32 = 4
+    static let awake: UInt32 = 5
 }

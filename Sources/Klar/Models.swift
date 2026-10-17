@@ -12,6 +12,7 @@ struct Hotkey: Codable, Equatable {
     static let dictationDefault = Hotkey(keyCode: UInt32(kVK_Space), carbonModifiers: UInt32(optionKey))
     static let meetingDefault = Hotkey(keyCode: UInt32(kVK_ANSI_M), carbonModifiers: UInt32(cmdKey | shiftKey | optionKey))
     static let recordingDefault = Hotkey(keyCode: UInt32(kVK_ANSI_R), carbonModifiers: UInt32(cmdKey | shiftKey | optionKey))
+    static let awakeDefault = Hotkey(keyCode: UInt32(kVK_ANSI_W), carbonModifiers: UInt32(cmdKey | shiftKey | optionKey))
 
     init(keyCode: UInt32, carbonModifiers: UInt32) {
         self.keyCode = keyCode
@@ -173,6 +174,12 @@ enum Format {
         let f = DateFormatter()
         f.locale = Locale(identifier: "de_DE")
         f.dateFormat = "d. MMM yyyy, HH:mm"
+        return f
+    }()
+
+    static let time: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
         return f
     }()
 

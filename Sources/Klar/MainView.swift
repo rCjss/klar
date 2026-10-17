@@ -14,6 +14,7 @@ import AppKit
                 case .dictations: DictationsView()
                 case .meetings: MeetingsView()
                 case .recordings: RecordingsView()
+                case .awake: AwakeView()
                 case .settings: SettingsView()
                 }
             }
@@ -473,5 +474,53 @@ import AppKit
     private var sizeText: String {
         let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         return ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
+    }
+}
+
+
+// MARK: - Wach
+
+@MainActor struct AwakeView: View {
+    @ObservedObject var awake = AwakeManager.shared
+    @ObservedObject var settings = Settings.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                PageTitle(title: "Wach", subtitle: "Hält Mac und Bildschirm wach – \(settings.awakeHotkey.display) schaltet um.")
+                Spacer()
+                if awake.isActive {
+                    PlainTextButton(title: "Beenden", prominent: true) { awake.stop() }
+                }
+            }
+            HStack(spacing: 10) {
+                Circle()
+                    .strokeBorder(Theme.ink, lineWidth: 1)
+                    .background(Circle().fill(awake.isHolding ? Theme.ink : Color.clear))
+                    .frame(width: 8, height: 8)
+                let _ = awake.tick
+                Text(awake.statusText).font(Theme.body).foregroundColor(Theme.ink)
+            }
+            .padding(.bottom, 40)
+
+            SectionLabel(text: awake.isActive ? "Dauer ändern" : "Wach halten für")
+            HStack(spacing: 22) {
+                ForEach(AwakeManager.durations, id: \.label) { d in
+                    PlainTextButton(title: d.label) { awake.start(duration: d.seconds) }
+                }
+                PlainTextButton(title: "Unbegrenzt") { awake.start(duration: nil) }
+            }
+            .padding(.bottom, 48)
+
+            SectionLabel(text: "Verhalten")
+            DotToggle(isOn: $settings.awakeKeepsDisplay, label: "Bildschirm ebenfalls wach halten")
+                .padding(.bottom, 14)
+            DotToggle(isOn: $settings.awakeDuringCapture, label: "Während Meetings und Bildschirmaufnahmen automatisch wach halten")
+                .padding(.bottom, 24)
+            Text("Zugeklappt schläft ein MacBook trotzdem, außer es hängt am Netzteil und an einem externen Bildschirm. Nach Ablauf der Zeit gelten wieder die normalen Energieeinstellungen.")
+                .font(Theme.small).foregroundColor(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+        }
     }
 }

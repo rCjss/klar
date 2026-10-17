@@ -23,6 +23,7 @@ import AppKit
                 HotkeyRow(label: "Diktat (tippen oder halten)", hotkey: $settings.dictationHotkey)
                 HotkeyRow(label: "Meeting transkribieren", hotkey: $settings.meetingHotkey)
                 HotkeyRow(label: "Bildschirmaufnahme", hotkey: $settings.recordingHotkey)
+                HotkeyRow(label: "Wach halten (an/aus)", hotkey: $settings.awakeHotkey)
                 Text("Klicken, dann Kombination drücken. Auch eine einzelne Taste wie die rechte ⌘ oder fn ist möglich – dafür ist die Bedienungshilfen-Freigabe nötig.")
                     .font(Theme.small).foregroundColor(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)

@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusItem()
         registerHotkeys()
         observeSettings()
+        WhisperEngine.warmUpIfSelected()
         #if DEBUG
         // Steuerung per Skript – nur im Debug-Build. Im Release gäbe das jedem lokalen Prozess
         // die Möglichkeit, Diktat (Mikrofon) oder das Panel auszulösen.
@@ -47,6 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         AwakeManager.shared.releaseLidModeOnQuit()
+        WhisperEngine.shared.shutdown()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

@@ -14,6 +14,9 @@ final class Settings: ObservableObject {
     @Published var awakeDuringCapture: Bool { didSet { d.set(awakeDuringCapture, forKey: "awakeDuringCapture") } }
     @Published var snippets: [Snippet] { didSet { save("snippets", snippets) } }
     @Published var localeIdentifier: String { didSet { d.set(localeIdentifier, forKey: "locale") } }
+    /// „apple“ oder „whisper“ – gilt für Diktat und Meetings.
+    @Published var speechEngine: String { didSet { d.set(speechEngine, forKey: "speechEngine") } }
+    @Published var whisperModel: String { didSet { d.set(whisperModel, forKey: "whisperModel") } }
     @Published var commandPrefix: String { didSet { d.set(commandPrefix, forKey: "commandPrefix") } }
     @Published var historyLimit: Int { didSet { d.set(historyLimit, forKey: "historyLimit") } }
     @Published var pasteAfterDictation: Bool { didSet { d.set(pasteAfterDictation, forKey: "pasteAfterDictation") } }
@@ -36,6 +39,8 @@ final class Settings: ObservableObject {
             Snippet(trigger: "Signatur", text: "Viele Grüße\n" + NSFullUserName()),
         ]
         localeIdentifier = d.string(forKey: "locale") ?? "de-DE"
+        speechEngine = d.string(forKey: "speechEngine") ?? SpeechEngine.apple.rawValue
+        whisperModel = d.string(forKey: "whisperModel") ?? WhisperModel.balanced.id
         commandPrefix = d.string(forKey: "commandPrefix") ?? "einfügen"
         historyLimit = d.object(forKey: "historyLimit") as? Int ?? 500
         pasteAfterDictation = d.object(forKey: "pasteAfterDictation") as? Bool ?? true

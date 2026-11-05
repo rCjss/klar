@@ -4,6 +4,11 @@ Alle nennenswerten Änderungen an Klar. Format angelehnt an [Keep a Changelog](h
 
 ## Unveröffentlicht
 
+- **Whisper als zweite Spracherkennung auf dem Mac**: Unter „Einstellungen → Sprache“ lässt sich zwischen Apples
+  Erkennung und Whisper wählen, mit drei Modellgrößen. Gilt für Diktat und Meetings, läuft lokal. Whisper rechnet
+  in einem eigenen Hilfsprozess ohne Zugriff auf Klars Freigaben; die Hardened Runtime der App bleibt unverändert.
+  Selbsttest: `Klar --whisper-selftest aufnahme.wav`.
+- Sprachbefehle werden toleranter erkannt („Ein Fügen-Signatur“ zählt als „einfügen Signatur“).
 - **Windows-Fassung** unter `windows/` (C#, .NET 10, WPF) mit gleichem Funktionsumfang. Spracherkennung dort lokal
   über Whisper, Bildschirmaufnahme als `.mp4`. Noch nicht auf einem echten Windows-PC erprobt – siehe `windows/README.md`.
 - Im Fenster „Zwischenablage“ kopiert ein Klick auf die Zeile sofort; kurze Rückmeldung „Kopiert“.

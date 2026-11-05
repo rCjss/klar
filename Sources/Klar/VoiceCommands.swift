@@ -21,11 +21,11 @@ enum VoiceCommands {
 
         let prefixPattern = prefix.trimmingCharacters(in: .whitespaces)
         for s in snippets where !s.trigger.isEmpty {
-            let words = s.trigger.split(separator: " ").map { NSRegularExpression.escapedPattern(for: String($0)) }
+            let words = s.trigger.split(separator: " ").map { loose(String($0)) }
             let triggerPattern = words.joined(separator: "[\\s,]+")
             var patterns: [String] = []
             if !prefixPattern.isEmpty {
-                patterns.append("(?i)\\b" + NSRegularExpression.escapedPattern(for: prefixPattern) + "[\\s,.:;]+" + triggerPattern + "\\b[.,!?]?")
+                patterns.append("(?i)\\b" + loose(prefixPattern) + "[\\s,.:;\\-]+" + triggerPattern + "\\b[.,!?]?")
             }
             for p in patterns {
                 guard let re = try? NSRegularExpression(pattern: p) else { continue }
@@ -40,6 +40,29 @@ enum VoiceCommands {
 
         text = builtins(text)
         return Result(text: text, usedSnippet: used)
+    }
+
+    /// Whisper trennt kurze Befehle manchmal falsch („Ein Fügen-Signatur“). Deshalb darf zwischen
+    /// zwei Buchstaben eines Befehlsworts ein Leerzeichen oder Bindestrich stehen.
+    private static func loose(_ word: String) -> String {
+        word.filter { !$0.isWhitespace }
+            .map { NSRegularExpression.escapedPattern(for: String($0)) }
+            .joined(separator: "[\\s\\-]?")
+    }
+
+    /// Wörter, die im Diktat wahrscheinlich vorkommen. Whisper schreibt Befehle damit zuverlässiger so,
+    /// wie sie hier erkannt werden („einfügen Signatur“ statt „ein Fügen-Signature“).
+    static func recognitionHint(snippets: [Snippet], prefix: String, languageCode: String) -> String {
+        let p = prefix.trimmingCharacters(in: .whitespaces)
+        var parts: [String] = []
+        for s in snippets.prefix(12) {
+            let trigger = s.trigger.trimmingCharacters(in: .whitespaces)
+            guard !trigger.isEmpty else { continue }
+            parts.append(p.isEmpty ? trigger + "." : p.prefix(1).uppercased() + p.dropFirst() + " " + trigger + ".")
+        }
+        // Die eingebauten Befehle sind deutsch; in anderen Sprachen würden sie nur stören.
+        if languageCode == "de" { parts += ["Neue Zeile.", "Neuer Absatz."] }
+        return parts.joined(separator: " ")
     }
 
     /// Eingebaute Befehle: „neue Zeile“, „neuer Absatz“.

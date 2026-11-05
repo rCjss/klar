@@ -36,7 +36,9 @@ import AppKit
                         PlainTextButton(title: name, prominent: settings.localeIdentifier == id) { settings.localeIdentifier = id }
                     }
                 }
-                .padding(.bottom, 12)
+                .padding(.bottom, 16)
+                SpeechEngineSettings()
+                    .padding(.bottom, 16)
                 DotToggle(isOn: $settings.pasteAfterDictation, label: "Diktat direkt in die aktive App einfügen")
                     .padding(.bottom, 14)
                 DotToggle(isOn: $settings.recordMicInScreenRecording, label: "Bei Bildschirmaufnahmen auch das Mikrofon aufnehmen")
@@ -108,7 +110,9 @@ import AppKit
                 PermissionRow(name: "Mikrofon", detail: "für Diktat und Meetings", state: Permissions.microphone) {
                     Task { _ = await Permissions.requestMicrophone(); permissionsTick += 1 }
                 }
-                PermissionRow(name: "Spracherkennung", detail: "lokal auf dem Gerät", state: Permissions.speech) {
+                PermissionRow(name: "Spracherkennung",
+                              detail: SpeechBackendFactory.needsSpeechPermission ? "lokal auf dem Gerät" : "nur für Apples Erkennung nötig",
+                              state: Permissions.speech) {
                     Task { _ = await Permissions.requestSpeech(); permissionsTick += 1 }
                 }
                 PermissionRow(name: "Bildschirmaufnahme", detail: "für Systemton und Aufnahmen", state: Permissions.screen) {

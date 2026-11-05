@@ -7,6 +7,8 @@
 set -e
 cd "$(dirname "$0")"
 
+./fetch-whisper.sh   # whisper.cpp-Framework für die Whisper-Erkennung (einmaliger Download)
+
 swift build -c release 2>&1 | grep -E "error|warning: unre|Compiling|Build complete" | tail -20
 
 APP=build/Klar.app
@@ -18,13 +20,29 @@ cp Resources/Info.plist "$APP/Contents/Info.plist"
 [ -f Resources/AppIcon.icns ] && cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 echo -n "APPL????" > "$APP/Contents/PkgInfo"
 
+# Whisper: Hilfsprozess unter Contents/Helpers, whisper.cpp-Framework unter Contents/Frameworks.
+# Nur die Architektur dieses Macs wird mitgenommen.
+WHISPER="$APP/Contents/Frameworks/whisper.framework"
+HELPER="$APP/Contents/Helpers/KlarWhisper"
+mkdir -p "$APP/Contents/Frameworks" "$APP/Contents/Helpers"
+cp .build/release/KlarWhisper "$HELPER"
+ditto Vendor/whisper.xcframework/macos-arm64_x86_64/whisper.framework "$WHISPER"
+rm -rf "$WHISPER/Headers" "$WHISPER/Modules" "$WHISPER/Versions/A/Headers" "$WHISPER/Versions/A/Modules"
+lipo "$WHISPER/Versions/A/whisper" -thin "$(uname -m)" -output "$WHISPER/Versions/A/whisper"
+
 # Signatur: mit lokalem Zertifikat „Klar Dev“ (siehe sign-setup.sh) bleiben die
 # Systemfreigaben über Neubauten hinweg erhalten. Sonst – und für Release-Archive – ad hoc.
+# Reihenfolge von innen nach außen: Framework, Helfer, dann die App (sie versiegelt beide mit).
 SIGN_ARGS=(--force --options runtime --entitlements Resources/Klar.entitlements --identifier de.felixsiebrasse.klar)
+HELPER_ARGS=(--force --options runtime --entitlements Resources/KlarWhisper.entitlements --identifier de.felixsiebrasse.klar.whisper)
 if [ "$1" != "--dist" ] && security find-identity -v -p codesigning 2>/dev/null | grep -q "Klar Dev"; then
+  codesign --force --options runtime --sign "Klar Dev" "$WHISPER" 2>&1 | grep -v "replacing existing" || true
+  codesign "${HELPER_ARGS[@]}" --sign "Klar Dev" "$HELPER" 2>&1 | grep -v "replacing existing" || true
   codesign "${SIGN_ARGS[@]}" --sign "Klar Dev" "$APP" 2>&1 | grep -v "replacing existing" || true
   echo "Signiert mit: Klar Dev"
 else
+  codesign --force --options runtime --sign - "$WHISPER" 2>&1 | grep -v "replacing existing" || true
+  codesign "${HELPER_ARGS[@]}" --sign - "$HELPER" 2>&1 | grep -v "replacing existing" || true
   codesign "${SIGN_ARGS[@]}" --sign - "$APP" 2>&1 | grep -v "replacing existing" || true
   if [ "$1" = "--dist" ]; then
     echo "Signiert: ad hoc (Release-Archiv)"

@@ -1,8 +1,8 @@
 import Speech
 import AVFoundation
 
-/// Gemeinsame Schnittstelle für die alte (SFSpeechRecognizer) und die neue
-/// (SpeechAnalyzer, macOS 26) Spracherkennung.
+/// Gemeinsame Schnittstelle für Apples Spracherkennung – alt (SFSpeechRecognizer) und
+/// neu (SpeechAnalyzer, macOS 26) – sowie für Whisper.
 @MainActor
 protocol SpeechBackend: AnyObject {
     var onPartial: (@MainActor (String) -> Void)? { get set }
@@ -13,15 +13,36 @@ protocol SpeechBackend: AnyObject {
 }
 
 enum SpeechBackendFactory {
-    /// Liefert die beste verfügbare Erkennung für die Sprache. Lädt bei Bedarf das Sprachmodell.
+    /// Apples Erkennung braucht die Systemfreigabe „Spracherkennung“, Whisper nicht.
+    static var needsSpeechPermission: Bool { SpeechEngine.current == .apple }
+
+    /// Liefert die gewählte Erkennung für die Sprache. Lädt bei Bedarf das Sprachmodell.
+    /// - Parameter vocabulary: Wörter, die wahrscheinlich vorkommen (Sprachbefehle). Nur Whisper nutzt sie.
     @MainActor
-    static func make(localeIdentifier: String, status: (@MainActor (String) -> Void)? = nil) async -> SpeechBackend? {
+    static func make(localeIdentifier: String, vocabulary: String? = nil,
+                     status: (@MainActor (String) -> Void)? = nil) async -> SpeechBackend? {
+        if SpeechEngine.current == .whisper {
+            return await WhisperSession.make(localeIdentifier: localeIdentifier,
+                                             model: WhisperModel.find(Settings.shared.whisperModel),
+                                             vocabulary: vocabulary, status: status)
+        }
         if #available(macOS 26.0, *) {
             if let modern = await AnalyzerSession.make(localeIdentifier: localeIdentifier, status: status) {
                 return modern
             }
         }
         return SpeechSession(localeIdentifier: localeIdentifier)
+    }
+}
+
+extension SpeechBackendFactory {
+    /// Meldung, wenn `make` nichts liefert.
+    @MainActor
+    static func unavailableMessage(localeIdentifier: String) -> String {
+        if SpeechEngine.current == .whisper {
+            return WhisperSession.lastError ?? "Whisper konnte nicht gestartet werden."
+        }
+        return "Spracherkennung für \(localeIdentifier) nicht verfügbar."
     }
 }
 

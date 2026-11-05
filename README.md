@@ -8,6 +8,8 @@ Meeting-Transkription mit Zusammenfassung, GIF-Suche, Bildschirmaufnahme mit Sys
 
 Aktuelle Version: 0.2.0 – siehe [CHANGELOG](CHANGELOG.md).
 
+Eine Windows-Fassung mit gleichem Funktionsumfang liegt unter [windows/](windows/README.md).
+
 Klar ist ein privates Projekt und wird hier öffentlich und kostenlos bereitgestellt. Wenn dir die App gefällt, freue ich mich über einen ⭐ Stern für dieses Repository
 oder ein Follow – das ist die Währung auf GitHub und hilft anderen, Klar zu finden.
 

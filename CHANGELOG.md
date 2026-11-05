@@ -4,6 +4,8 @@ Alle nennenswerten Änderungen an Klar. Format angelehnt an [Keep a Changelog](h
 
 ## Unveröffentlicht
 
+- **Windows-Fassung** unter `windows/` (C#, .NET 10, WPF) mit gleichem Funktionsumfang. Spracherkennung dort lokal
+  über Whisper, Bildschirmaufnahme als `.mp4`. Noch nicht auf einem echten Windows-PC erprobt – siehe `windows/README.md`.
 - Im Fenster „Zwischenablage“ kopiert ein Klick auf die Zeile sofort; kurze Rückmeldung „Kopiert“.
 
 ## 0.2.0 – 2026-10-17

@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.2.0</Version>
+    <Authors>rCjss</Authors>
+    <Product>Klar</Product>
+    <Copyright>MIT</Copyright>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <NeutralLanguage>de</NeutralLanguage>
+    <SatelliteResourceLanguages>de;en</SatelliteResourceLanguages>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+</Project>

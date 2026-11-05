@@ -1,0 +1,110 @@
+# Baut und prüft die Windows-Fassung auf einem echten Windows-Rechner.
+name: Windows
+
+on:
+  push:
+    branches: [main]
+    paths: ['windows/**', '.github/workflows/windows.yml']
+    tags: ['v*']
+  pull_request:
+    paths: ['windows/**', '.github/workflows/windows.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write   # nur für das Anhängen des Pakets an ein Release (bei Tags)
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Tests der gemeinsamen Logik
+        run: dotnet test tests/Klar.Core.Tests -c Release --nologo
+
+      - name: Paket bauen
+        run: |
+          dotnet publish src/Klar -c Release -o dist/Klar --nologo
+          Get-ChildItem dist/Klar/runtimes -Directory | Where-Object { -not (Get-ChildItem $_.FullName -Recurse -File) } | Remove-Item -Recurse -Force
+          Remove-Item dist/Klar/*.pdb -ErrorAction SilentlyContinue
+
+      # Whisper und die Bildschirmaufnahme brauchen die Visual-C++-Laufzeit. Sie wird dem Paket beigelegt
+      # (von Microsoft dafür freigegebene Dateien aus dem Redist-Ordner von Visual Studio), damit Klar
+      # auch auf frisch installierten PCs ohne weiteren Download läuft.
+      - name: Visual-C++-Laufzeit beilegen
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+          $redist = Get-ChildItem "$vs\VC\Redist\MSVC" -Directory | Where-Object Name -match '^\d' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
+          $files = @(Get-ChildItem "$($redist.FullName)\x64\Microsoft.VC*.CRT\*.dll") + @(Get-ChildItem "$($redist.FullName)\x64\Microsoft.VC*.OpenMP\vcomp140.dll")
+          if ($files.Count -lt 4) { throw "Redist-Dateien nicht gefunden unter $($redist.FullName)" }
+          foreach ($dir in 'dist/Klar', 'dist/Klar/runtimes/win-x64', 'dist/Klar/recorder') { $files | Copy-Item -Destination $dir }
+          $files | ForEach-Object Name
+
+      - name: Sprachmodell und Testaufnahme für den Selbsttest
+        run: |
+          Invoke-WebRequest 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin' -OutFile "$env:RUNNER_TEMP\ggml-base-q5_1.bin"
+          Add-Type -AssemblyName System.Speech
+          $voice = New-Object System.Speech.Synthesis.SpeechSynthesizer
+          $voice.SetOutputToWaveFile("$env:RUNNER_TEMP\test.wav")
+          $voice.Speak('Hello, this is a short test of the dictation feature.')
+          $voice.Dispose()
+
+      - name: Selbsttest (alle Fenster und Systemfunktionen)
+        env:
+          KLAR_SELFTEST_MODEL: ${{ runner.temp }}\ggml-base-q5_1.bin
+          KLAR_SELFTEST_WAV: ${{ runner.temp }}\test.wav
+          KLAR_SELFTEST_LANG: en
+        run: |
+          $report = "$env:RUNNER_TEMP\klar-selftest.txt"
+          $p = Start-Process -FilePath dist/Klar/Klar.exe -ArgumentList '--selftest', "`"$report`"" -PassThru
+          if (-not $p.WaitForExit(300000)) { $p.Kill(); throw 'Selbsttest hängt.' }
+          if (Test-Path $report) { Get-Content $report -Encoding UTF8 } else { throw 'Kein Bericht geschrieben – Klar ist beim Start abgestürzt.' }
+          if ($p.ExitCode -ne 0) { throw "Selbsttest: $($p.ExitCode) Fehler." }
+
+      - name: Starttest (normaler Start im Hintergrund)
+        run: |
+          $p = Start-Process -FilePath dist/Klar/Klar.exe -ArgumentList '--hidden' -PassThru
+          Start-Sleep -Seconds 8
+          if ($p.HasExited) { throw "Klar hat sich beendet (Code $($p.ExitCode))." }
+          $p.Kill()
+          $log = "$env:APPDATA\Klar\klar.log"
+          if (Test-Path $log) { Get-Content $log -Encoding UTF8; if (Select-String -Path $log -Pattern 'Unbehandelter Fehler|Schwerer Fehler' -Quiet) { throw 'Fehler im Protokoll.' } }
+
+      - name: Archiv packen
+        id: zip
+        run: |
+          $version = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version
+          $zip = "dist/Klar-$version-win-x64.zip"
+          Compress-Archive -Path dist/Klar -DestinationPath $zip
+          "path=windows/$zip" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Klar-win-x64
+          path: ${{ steps.zip.outputs.path }}
+          if-no-files-found: error
+
+      - name: Paket an das Release hängen
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: .
+        run: |
+          gh release view "${{ github.ref_name }}" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload "${{ github.ref_name }}" "${{ steps.zip.outputs.path }}" --clobber
+          } else {
+            Write-Host 'Kein Release zu diesem Tag – das Paket liegt als Artefakt bereit.'
+            $global:LASTEXITCODE = 0
+          }

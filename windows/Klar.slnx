@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Klar.Core/Klar.Core.csproj" />
+    <Project Path="src/Klar/Klar.csproj" />
+    <Project Path="src/KlarRecorder/KlarRecorder.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Klar.Core.Tests/Klar.Core.Tests.csproj" />
+  </Folder>
+</Solution>

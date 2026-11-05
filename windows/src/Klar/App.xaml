@@ -1,0 +1,35 @@
+<Application x:Class="Klar.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnExplicitShutdown">
+  <Application.Resources>
+    <!-- Radikal reduzierte Schwarz-Weiß-Palette. Die Werte werden zur Laufzeit an Hell/Dunkel angepasst. -->
+    <SolidColorBrush x:Key="Paper" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="Ink" Color="#FF000000"/>
+    <SolidColorBrush x:Key="Muted" Color="#6B000000"/>
+    <SolidColorBrush x:Key="Faint" Color="#2E000000"/>
+    <SolidColorBrush x:Key="Line" Color="#14000000"/>
+    <SolidColorBrush x:Key="Hover" Color="#0A000000"/>
+
+    <!-- Schaltfläche ohne jede Dekoration. -->
+    <Style x:Key="PlainButton" TargetType="Button">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </Application.Resources>
+</Application>

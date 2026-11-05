@@ -14,8 +14,13 @@ Diese Fassung ist deshalb eine eigene Umsetzung in C# (.NET 10, WPF).
 
 Entwickelt und übersetzt auf einem Mac. Die gemeinsame Logik (Verlauf, Sprachbefehle, Audio-Aufbereitung,
 Abschnittserkennung, Whisper-Anbindung, Zusammenfassung) ist dort mit Tests abgedeckt, inklusive eines echten
-Erkennungslaufs. Oberfläche und Systemanbindung (Tastenkürzel, Zwischenablage, Aufnahme) lassen sich nur unter
-Windows ausführen. Dafür gibt es einen eingebauten Selbsttest, siehe unten.
+Erkennungslaufs. Oberfläche und Systemanbindung lassen sich nur unter Windows ausführen. Dafür gibt es einen
+eingebauten Selbsttest, siehe unten.
+
+Der GitHub-Workflow führt diesen Selbsttest bei jeder Änderung auf einem Windows-Rechner aus. Dort bestanden:
+Start, alle Fenster, Tastenkürzel, Zwischenablage, Infobereich-Symbol, Anmeldeinformationen und die
+Spracherkennung mit Whisper. Mikrofon, Systemton und Bildschirmaufnahme kann der Rechner von GitHub nicht prüfen,
+weil er weder Soundkarte noch Bildschirm hat. Diese drei sind noch auf keinem echten PC erprobt.
 
 ## Voraussetzungen
 

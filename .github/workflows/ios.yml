@@ -42,9 +42,14 @@ jobs:
           curl -fsSL --retry 3 -o "$M/ggml-large-v3-turbo-q5_0.bin" \
             https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-large-v3-turbo-q5_0.bin
           # Testsätze mit den Systemstimmen, soweit auf dem Rechner vorhanden
-          speak() { v=$(say -v '?' | awk -v l="$2" '$0 ~ l {print $1; exit}'); [ -n "$v" ] && say -v "$v" -o "$W/$1.aiff" "$3" && afconvert -f WAVE -d LEI16@16000 -c 1 "$W/$1.aiff" "$W/$1.wav" || echo "keine Stimme für $2"; }
-          speak de de_DE "Guten Morgen, ich diktiere hier einen kurzen Text für die neue Modellauswahl."
-          speak en en_US "Good morning, this is a short dictation test for the new model selection."
+          # Bevorzugt die Standardstimmen (Effektstimmen wie „Albert“ sind unverständlich).
+          speak() {
+            v=$(say -v '?' | awk -v l="$2" -v p="$4" '$0 ~ l && (p == "" || $1 == p) {print $1; exit}')
+            [ -z "$v" ] && v=$(say -v '?' | awk -v l="$2" '$0 ~ l {print $1; exit}')
+            if [ -n "$v" ]; then say -v "$v" -o "$W/$1.aiff" "$3" && afconvert -f WAVE -d LEI16@16000 -c 1 "$W/$1.aiff" "$W/$1.wav"; echo "$1: $v"; else echo "keine Stimme für $2"; fi
+          }
+          speak de de_DE "Guten Morgen, ich diktiere hier einen kurzen Text für die neue Modellauswahl." Anna
+          speak en en_US "Good morning, this is a short dictation test for the new model selection." Samantha
           speak ro ro_RO "Bună dimineața, acesta este un scurt test de dictare pentru noua selecție de modele."
           speak pl pl_PL "Dzień dobry, to jest krótki test dyktowania dla nowego wyboru modelu."
           speak tr tr_TR "Günaydın, bu yeni model seçimi için kısa bir dikte testidir."
@@ -61,6 +66,13 @@ jobs:
           xcodebuild test -project KlarMobile.xcodeproj -scheme Klar -destination "id=$SIM" \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$RUNNER_TEMP/test.log" | grep -E "error:|warning: .*Klar/|Test Case|Executed|Whisper|Parakeet|\*\* TEST" || true
           grep -q "\*\* TEST SUCCEEDED \*\*" "$RUNNER_TEMP/test.log"
+
+      - name: Testprotokoll bei Fehlern
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-log
+          path: ${{ runner.temp }}/test.log
 
       - name: App für das iPhone bauen (unsigniert)
         working-directory: ios

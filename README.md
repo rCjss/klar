@@ -6,9 +6,10 @@ Minimalistische Menüleisten-App für macOS: Zwischenablage-Verlauf, Diktat mit 
 Meeting-Transkription mit Zusammenfassung, GIF-Suche, Bildschirmaufnahme mit Systemton und
 „Cocaine“ zum Wachhalten. Schwarz-Weiß, viel Weißraum, keine Deko.
 
-Aktuelle Version: 0.2.0 – siehe [CHANGELOG](CHANGELOG.md).
+Aktuelle Version: 0.3.0 – siehe [CHANGELOG](CHANGELOG.md).
 
-Eine Windows-Fassung mit gleichem Funktionsumfang liegt unter [windows/](windows/README.md).
+Eine Windows-Fassung mit gleichem Funktionsumfang liegt unter [windows/](windows/README.md), eine
+iPhone-App zum Diktieren unter [ios/](ios/README.md).
 
 Klar ist ein privates Projekt und wird hier öffentlich und kostenlos bereitgestellt. Wenn dir die App gefällt, freue ich mich über einen ⭐ Stern für dieses Repository
 oder ein Follow – das ist die Währung auf GitHub und hilft anderen, Klar zu finden.
@@ -26,7 +27,8 @@ Die Nutzung erfolgt auf eigenes Risiko. Sicherheitsrelevante Hinweise siehe unte
 
 - **Zwischenablage-Verlauf** – Text, Bilder und Dateien, durchsuchbar, anpinnbar, per Tastatur einfügbar
 - **Diktat** – Hotkey drücken, sprechen, Text landet in der aktiven App; lokal über Apples Spracherkennung
-  oder wahlweise über Whisper
+  oder wahlweise über Whisper Large-v3, Whisper Large-v3 Turbo oder NVIDIA Parakeet TDT 0.6B v3
+- **Sprachen** – Deutsch, Englisch, Rumänisch, Polnisch, Türkisch
 - **Sprachbefehle** – „Signatur“ sagen und ein Textbaustein wird eingefügt
 - **Meetings** – Systemton („Andere“) und Mikrofon („Ich“) parallel transkribieren, danach Zusammenfassung
   über Apple Intelligence, Claude Code (Abo) oder die Claude-API
@@ -73,9 +75,10 @@ cd klar
 dabei einmal nach dem Passwort. Ohne diesen Schritt wird ad hoc signiert, und macOS verlangt die Freigaben
 nach jedem Neubau erneut.
 
-`build.sh` lädt beim ersten Lauf das fertige [whisper.cpp](https://github.com/ggml-org/whisper.cpp)-Framework
-(65 MB, offizielles Release, per SHA-256 geprüft) nach `Vendor/`. Wer nur `swift build` nutzt, ruft vorher
-einmal `./fetch-whisper.sh` auf.
+`build.sh` lädt beim ersten Lauf die fertigen Bibliotheken [whisper.cpp](https://github.com/ggml-org/whisper.cpp)
+(65 MB) und [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (19 MB, für Parakeet) nach `Vendor/` –
+jeweils offizielle Releases, per SHA-256 geprüft. Wer nur `swift build` nutzt, ruft vorher einmal
+`./fetch-whisper.sh` auf.
 
 ## Berechtigungen
 
@@ -110,24 +113,33 @@ Als Diktat-Hotkey lässt sich auch eine einzelne Modifier-Taste festlegen, etwa 
 In den Einstellungen Bausteine anlegen (z. B. „Signatur“). Dann entweder nur den Namen diktieren oder mitten
 im Satz „einfügen Signatur“ sagen. „Neue Zeile“ und „neuer Absatz“ sind eingebaut.
 
-## Spracherkennung: Apple oder Whisper
+## Spracherkennung: Modellauswahl
 
-Unter „Einstellungen → Sprache → Erkennung über“ lässt sich wählen, womit Diktat und Meetings in Text
-umgewandelt werden. Beides läuft lokal auf dem Gerät.
+Unter „Einstellungen → Sprache → Erkennung“ lässt sich wählen, womit Diktat und Meetings in Text
+umgewandelt werden. Alles läuft lokal auf dem Gerät.
 
-- **Apple** (Standard) – Apples Spracherkennung. Der Text erscheint schon beim Sprechen.
-- **Whisper** – das offene Modell von OpenAI über whisper.cpp. Der Text erscheint nach jeder Sprechpause.
-  Drei Modelle: „Schnell“ (60 MB), „Ausgewogen“ (190 MB, Standard) und „Genau“ (574 MB). Das gewählte Modell
-  wird einmalig von Hugging Face geladen und liegt danach unter `~/Library/Application Support/Klar/Models/`.
+| Erkennung | Größe | Eigenschaften |
+|---|---|---|
+| **Apple** (Standard) | im System | Text erscheint schon beim Sprechen |
+| **Whisper Large-v3** | 1,1 GB | das genaueste Modell, braucht am meisten Zeit und Speicher |
+| **Whisper Large-v3 Turbo** | 574 MB | fast so genau, deutlich schneller |
+| **Parakeet TDT 0.6B v3** (NVIDIA) | 671 MB | sehr schnell, mit Satzzeichen, erkennt die Sprache selbst; 25 europäische Sprachen, **kein Türkisch** |
 
-Whisper rechnet in einem eigenen Hilfsprozess (`KlarWhisper`), der nach zehn Minuten ohne Nutzung endet und
-den Speicher freigibt. Ob die Kette funktioniert, zeigt ein Selbsttest ohne Oberfläche:
+Sprachen: Deutsch, Englisch, Rumänisch, Polnisch, Türkisch. Ist Parakeet gewählt und Türkisch eingestellt,
+sagt Klar das deutlich und verlangt ein Whisper-Modell.
+
+Die Whisper-Modelle laufen über whisper.cpp (quantisiert, q5_0), Parakeet über sherpa-onnx (int8). Bei den
+lokalen Modellen erscheint der Text nach jeder Sprechpause. Das gewählte Modell wird einmalig von Hugging Face
+geladen, per Größe und SHA-256 geprüft und liegt danach unter `~/Library/Application Support/Klar/Models/`.
+
+Die lokale Erkennung rechnet in einem eigenen Hilfsprozess (`KlarWhisper`), der nach zehn Minuten ohne Nutzung
+endet und den Speicher freigibt. Ob die Kette funktioniert, zeigt ein Selbsttest ohne Oberfläche:
 
 ```
-/Applications/Klar.app/Contents/MacOS/Klar --whisper-selftest aufnahme.wav
+/Applications/Klar.app/Contents/MacOS/Klar --whisper-selftest aufnahme.wav --locale pl-PL --model parakeet-tdt-0.6b-v3
 ```
 
-Optional `--locale en-US` und `--model base|small|large-v3-turbo`. Die Datei wird wie ein Mikrofon eingespielt,
+Modelle: `large-v3`, `large-v3-turbo`, `parakeet-tdt-0.6b-v3`. Die Datei wird wie ein Mikrofon eingespielt,
 der erkannte Text ausgegeben. Einstellungen werden dabei weder gelesen noch geändert.
 
 ## Zusammenfassungen
@@ -159,7 +171,7 @@ developers.giphy.com → „Create an App“ → API → Key kopieren.
 ## Daten
 
 - Verlauf, Diktate, Transkripte, GIFs: `~/Library/Application Support/Klar/` (nur für den eigenen Benutzer lesbar)
-- Whisper-Modelle, falls genutzt: `~/Library/Application Support/Klar/Models/`
+- Sprachmodelle, falls genutzt: `~/Library/Application Support/Klar/Models/`
 - Aufnahmen: `~/Movies/Klar/`
 - API-Schlüssel (Claude, Giphy): macOS-Schlüsselbund (Eintrag „Klar“ mit der Bundle-ID der App)
 
@@ -173,8 +185,8 @@ Was das Gerät verlässt – und nur dann, wenn du die Funktion nutzt:
 | Zusammenfassung über Claude Code | Anthropic (über dein Abo) | Meeting-Transkript |
 | Zusammenfassung über Claude-API | api.anthropic.com | Meeting-Transkript, API-Schlüssel |
 | Zusammenfassung über Apple Intelligence | niemand (lokal) | – |
-| Diktat, Transkription | niemand (lokal, Apple oder Whisper) | – |
-| Whisper-Modell laden (einmalig je Modell) | huggingface.co | nur die Anfrage nach der Modelldatei |
+| Diktat, Transkription | niemand (lokal, Apple, Whisper oder Parakeet) | – |
+| Sprachmodell laden (einmalig je Modell) | huggingface.co | nur die Anfrage nach den Modelldateien |
 
 Alle Verbindungen laufen über HTTPS (App Transport Security ohne Ausnahmen). Klar hat kein URL-Schema,
 keinen Update-Mechanismus, keine Telemetrie und keine offenen Ports.
@@ -183,10 +195,11 @@ Schutzmaßnahmen:
 
 - Hardened Runtime: keine Code-Injektion per `DYLD_*`, keine fremden Bibliotheken. Wichtig, weil die App
   Bedienungshilfen, Mikrofon und Bildschirmaufnahme besitzt und sonst als Türöffner für andere Prozesse dienen könnte.
-- whisper.cpp ist ein fremdes, fertig gebautes Framework und läuft deshalb nicht in der App, sondern in einem
-  eigenen Hilfsprozess. Er bekommt nur Tonabschnitte und liefert Text. macOS behandelt ihn als eigenständigen
+- whisper.cpp und sherpa-onnx sind fremde, fertig gebaute Bibliotheken und laufen deshalb nicht in der App,
+  sondern in einem eigenen Hilfsprozess. Er bekommt nur Tonabschnitte und liefert Text. macOS behandelt ihn als eigenständigen
   Prozess: Klars Freigaben (Mikrofon, Bildschirm, Bedienungshilfen) gelten für ihn nicht. Vor jedem Start prüft
-  Klar die Signatur des eigenen App-Bündels samt Helfer und Framework; ist etwas verändert, bleibt Whisper aus.
+  Klar die Signatur des eigenen App-Bündels samt Helfer und Bibliotheken; ist etwas verändert, bleibt die
+  lokale Erkennung aus.
 - Skript-Steuerung per DistributedNotification (Diktat/Panel auslösen) gibt es nur im Debug-Build.
 - Kopien aus Passwortmanagern und der Schlüsselbundverwaltung werden nie aufgezeichnet; ebenso Inhalte mit
   den Markern `org.nspasteboard.ConcealedType`, `TransientType`, `AutoGeneratedType`.

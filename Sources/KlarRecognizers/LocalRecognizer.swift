@@ -63,8 +63,8 @@ public final class LocalRecognizer {
 
     private static func openWhisper(_ path: String) -> OpaquePointer? {
         var params = whisper_context_default_params()
-        #if os(macOS) && arch(x86_64)
-        params.use_gpu = false // Metal lohnt sich nur auf Apple Silicon
+        #if (os(macOS) && arch(x86_64)) || targetEnvironment(simulator)
+        params.use_gpu = false // Metal lohnt sich nur auf Apple Silicon, im Simulator fehlt es teilweise
         #endif
         return whisper_init_from_file_with_params(path, params)
     }

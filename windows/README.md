@@ -27,7 +27,8 @@ weil er weder Soundkarte noch Bildschirm hat. Diese drei sind noch auf keinem ec
 - Windows 10 (ab 1903) oder Windows 11, 64 Bit
 - Für Diktat, Meetings und Bildschirmaufnahme: die [Microsoft-Visual-C++-Laufzeit](https://aka.ms/vs/17/release/vc_redist.x64.exe).
   Sie ist auf den meisten PCs schon vorhanden; Pakete aus dem GitHub-Workflow bringen sie mit.
-- Für die Spracherkennung einmalig 60 bis 574 MB Download (Sprachmodell, je nach gewählter Genauigkeit)
+- Für die Spracherkennung einmalig 574 MB bis 1,1 GB Download (Sprachmodell: Whisper Large-v3 Turbo 574 MB,
+  Parakeet TDT 0.6B v3 671 MB, Whisper Large-v3 1,1 GB)
 
 ## Installation
 
@@ -96,7 +97,8 @@ AltGr selbst lässt sich nicht als Einzeltaste wählen, weil Windows sie als Str
 
 | Bereich | Mac | Windows |
 |---|---|---|
-| Spracherkennung | Apple (Text erscheint beim Sprechen) oder wahlweise Whisper | Whisper (lokal), Text erscheint nach jeder Sprechpause |
+| Spracherkennung | Apple, Whisper Large-v3, Large-v3 Turbo oder Parakeet TDT 0.6B v3 | Whisper Large-v3, Large-v3 Turbo oder Parakeet TDT 0.6B v3 (lokal), Text erscheint nach jeder Sprechpause |
+| Sprachen | Deutsch, Englisch, Rumänisch, Polnisch, Türkisch | dieselben (Parakeet ohne Türkisch) |
 | Zusammenfassung | Claude Code, Claude-API, Apple Intelligence | Claude Code, Claude-API |
 | Bildschirmaufnahme | `.mov` in Filme/Klar | `.mp4` in Videos\Klar |
 | Deckel-Modus | `pmset`, fragt nach Admin-Passwort | Energieoption „Beim Zuklappen“, ohne Passwort |
@@ -127,7 +129,7 @@ Was das Gerät verlässt – und nur dann, wenn du die Funktion nutzt:
 | GIF-Suche | api.giphy.com | Suchbegriff, Giphy-Schlüssel |
 | Zusammenfassung über Claude Code | Anthropic (über dein Abo) | Meeting-Transkript |
 | Zusammenfassung über Claude-API | api.anthropic.com | Meeting-Transkript, API-Schlüssel |
-| Diktat, Transkription | niemand (lokal, Whisper) | – |
+| Diktat, Transkription | niemand (lokal, Whisper oder Parakeet) | – |
 
 Klar hat keinen Update-Mechanismus, keine Telemetrie und keine offenen Ports.
 
@@ -151,6 +153,7 @@ Klar hat keinen Update-Mechanismus, keine Telemetrie und keine offenen Ports.
 | `tests/Klar.Core.Tests` | Tests der gemeinsamen Logik, lauffähig auf Mac, Linux und Windows |
 
 Verwendete Bibliotheken: [Whisper.net](https://github.com/sandrohanea/whisper.net) (MIT),
+[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (Apache 2.0, für Parakeet),
 [NAudio](https://github.com/naudio/NAudio) (MIT), [ScreenRecorderLib](https://github.com/sskodje/ScreenRecorderLib) (MIT),
 [XamlAnimatedGif](https://github.com/XamlAnimatedGif/XamlAnimatedGif) (Apache 2.0).
 

@@ -2,10 +2,22 @@
 
 Alle nennenswerten Änderungen an Klar. Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/).
 
-## Unveröffentlicht
+## 0.3.0 – 2026-11-26
 
+### Neu
+- **Modellauswahl** auf Mac, Windows und iPhone: Whisper Large-v3, Whisper Large-v3 Turbo und NVIDIA Parakeet
+  TDT 0.6B v3 (auf Mac und iPhone zusätzlich Apples Erkennung). Parakeet läuft über sherpa-onnx, ist sehr schnell,
+  setzt Satzzeichen und erkennt die Sprache selbst. Modelle werden per Größe und SHA-256 geprüft. Die bisherigen
+  Modelle „Schnell“ und „Ausgewogen“ entfallen; wer sie gewählt hatte, bekommt Large-v3 Turbo.
+- **Sprachen**: Deutsch, Englisch, Rumänisch, Polnisch, Türkisch. Parakeet kennt kein Türkisch – Klar weist
+  darauf hin, statt still falsch zu erkennen.
+- **iPhone-App** unter `ios/` (SwiftUI): Diktieren antippen, sprechen, Text wird kopiert; Teilen, Verlauf,
+  Modell- und Sprachwahl. Alle Modelle laufen lokal auf dem iPhone. Gebaut und im Simulator geprüft per
+  GitHub-Workflow, der eine unsignierte `.ipa` liefert – siehe `ios/README.md`.
+
+### Aus der Vorversion (bisher unveröffentlicht)
 - **Whisper als zweite Spracherkennung auf dem Mac**: Unter „Einstellungen → Sprache“ lässt sich zwischen Apples
-  Erkennung und Whisper wählen, mit drei Modellgrößen. Gilt für Diktat und Meetings, läuft lokal. Whisper rechnet
+  Erkennung und Whisper wählen. Gilt für Diktat und Meetings, läuft lokal. Whisper rechnet
   in einem eigenen Hilfsprozess ohne Zugriff auf Klars Freigaben; die Hardened Runtime der App bleibt unverändert.
   Selbsttest: `Klar --whisper-selftest aufnahme.wav`.
 - Sprachbefehle werden toleranter erkannt („Ein Fügen-Signatur“ zählt als „einfügen Signatur“).

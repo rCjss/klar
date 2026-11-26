@@ -154,6 +154,7 @@ public partial class App : Application
         hk.Set(HotkeyId.Meeting, settings.MeetingHotkey, MeetingRecorder.Shared.Toggle);
         hk.Set(HotkeyId.Recording, settings.RecordingHotkey, ScreenRecorder.Shared.Toggle);
         hk.Set(HotkeyId.Awake, settings.AwakeHotkey, AwakeManager.Shared.Toggle);
+        hk.SetCapsLatch(settings.CapsLatch);
         hk.NotifyChanged();
     }
 
@@ -167,6 +168,7 @@ public partial class App : Application
             case nameof(AppSettings.MeetingHotkey):
             case nameof(AppSettings.RecordingHotkey):
             case nameof(AppSettings.AwakeHotkey):
+            case nameof(AppSettings.CapsLatch):
                 RegisterHotkeys();
                 break;
             case nameof(AppSettings.AwakeKeepsDisplay):

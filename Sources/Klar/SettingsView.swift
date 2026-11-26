@@ -24,6 +24,12 @@ import KlarSpeech
                     .font(Theme.small).foregroundColor(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 12)
+                DotToggle(isOn: $settings.capsLatch, label: "Feststelltaste hält Tasten gedrückt")
+                    .padding(.top, 20)
+                Text("Ist die Feststelltaste an, bleibt die nächste gedrückte Taste (z. B. W) gedrückt – etwa zum Dauerlaufen in Spielen. Loslassen: die Taste noch einmal drücken oder die Feststelltaste ausschalten. Braucht die Bedienungshilfen-Freigabe.")
+                    .font(Theme.small).foregroundColor(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 6)
                 Spacer().frame(height: 48)
 
                 SectionLabel(text: "Sprache")

@@ -73,6 +73,8 @@ internal sealed class SettingsPage : Page
         HotkeyRow("Cocaine – wach halten (an/aus)", HotkeyId.Awake, () => settings.AwakeHotkey, h => settings.AwakeHotkey = h);
         Add(Ui.Note("Klicken, dann Kombination drücken. Auch eine einzelne Taste wie die rechte Strg-Taste ist möglich. Strg+Alt entspricht AltGr – Buchstaben mit AltGr-Zeichen (Q, E, M) besser meiden.")
             .With(new Thickness(0, 12, 0, 0)), 48);
+        Add(Ui.DotToggle("Feststelltaste hält Tasten gedrückt", settings.CapsLatch, v => settings.CapsLatch = v), 6);
+        Add(Ui.Note("Ist die Feststelltaste an, bleibt die nächste gedrückte Taste (z. B. W) gedrückt – etwa zum Dauerlaufen in Spielen. Loslassen: die Taste noch einmal drücken oder die Feststelltaste ausschalten."), 48);
 
         // Sprache
         Add(Ui.SectionLabel("Sprache"));

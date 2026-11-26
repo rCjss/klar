@@ -108,6 +108,15 @@ tippen = suchen. Klick auf einen Eintrag fügt ihn ein und rückt ihn nach oben.
 
 Als Diktat-Hotkey lässt sich auch eine einzelne Modifier-Taste festlegen, etwa die rechte ⌘-Taste.
 
+### Feststelltaste hält Tasten gedrückt
+
+Unter „Einstellungen → Tastenkürzel“ einschaltbar (standardmäßig aus). Ist die Feststelltaste (⇪) an und du
+drückst eine Taste – etwa W –, bleibt sie für alle Apps gedrückt, auch nachdem du loslässt. Praktisch zum
+Dauerlaufen in Spielen. Losgelassen wird sie, wenn du sie bei eingeschalteter Feststelltaste noch einmal drückst,
+sie bei ausgeschalteter Feststelltaste normal antippst oder die Feststelltaste ausschaltest. Kürzel mit ⌘, ⌃
+oder ⌥ sowie Modifier und Esc werden nie festgehalten. Braucht die Bedienungshilfen-Freigabe. Gibt es auch
+unter Windows.
+
 ## Sprachbefehle
 
 In den Einstellungen Bausteine anlegen (z. B. „Signatur“). Dann entweder nur den Namen diktieren oder mitten

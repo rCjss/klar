@@ -85,6 +85,7 @@ public sealed class AppSettings : INotifyPropertyChanged
     private bool _autoSummarize = true;
     private string _summaryProvider = "auto";
     private string _whisperModel = SpeechModels.Default.Id;
+    private bool _capsLatch;
     private bool _didShowWindowOnce;
     private bool _lidModeArmed;
     private uint _lidSavedAc = 1, _lidSavedDc = 1;
@@ -117,6 +118,8 @@ public sealed class AppSettings : INotifyPropertyChanged
     public bool AutoSummarize { get => _autoSummarize; set => Set(ref _autoSummarize, value); }
     public string SummaryProvider { get => _summaryProvider; set => Set(ref _summaryProvider, value); }
     public string WhisperModel { get => _whisperModel; set => Set(ref _whisperModel, value); }
+    /// <summary>Feststelltaste an + Taste = Taste bleibt gedrückt (siehe <see cref="KeyLatchLogic"/>).</summary>
+    public bool CapsLatch { get => _capsLatch; set => Set(ref _capsLatch, value); }
     public bool DidShowWindowOnce { get => _didShowWindowOnce; set => Set(ref _didShowWindowOnce, value); }
     public bool LidModeArmed { get => _lidModeArmed; set => Set(ref _lidModeArmed, value); }
     public uint LidSavedAc { get => _lidSavedAc; set => Set(ref _lidSavedAc, value); }

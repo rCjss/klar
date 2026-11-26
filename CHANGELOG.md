@@ -11,6 +11,8 @@ Alle nennenswerten Änderungen an Klar. Format angelehnt an [Keep a Changelog](h
   Modelle „Schnell“ und „Ausgewogen“ entfallen; wer sie gewählt hatte, bekommt Large-v3 Turbo.
 - **Sprachen**: Deutsch, Englisch, Rumänisch, Polnisch, Türkisch. Parakeet kennt kein Türkisch – Klar weist
   darauf hin, statt still falsch zu erkennen.
+- **Feststelltaste hält Tasten gedrückt** (Mac und Windows, in den Einstellungen einschaltbar): Feststelltaste an
+  + Taste (z. B. W) = Taste bleibt gedrückt, bis man sie erneut drückt oder die Feststelltaste ausschaltet.
 - **iPhone-App** unter `ios/` (SwiftUI): Diktieren antippen, sprechen, Text wird kopiert; Teilen, Verlauf,
   Modell- und Sprachwahl. Alle Modelle laufen lokal auf dem iPhone. Gebaut und im Simulator geprüft per
   GitHub-Workflow, der eine unsignierte `.ipa` liefert – siehe `ios/README.md`.

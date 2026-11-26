@@ -29,6 +29,11 @@ internal static class Native
     public static bool IsKeyDown(uint vk) => (GetAsyncKeyState((int)vk) & 0x8000) != 0;
 
     [DllImport("user32.dll")]
+    public static extern short GetKeyState(int vKey);
+
+    public const uint KEYEVENTF_EXTENDEDKEY = 0x1, LLKHF_EXTENDED = 0x1;
+
+    [DllImport("user32.dll")]
     public static extern IntPtr GetForegroundWindow();
 
     [DllImport("user32.dll")]

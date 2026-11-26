@@ -58,6 +58,68 @@ internal sealed class HotkeyManager
     private uint? _heldModifier;
     private bool _heldCancelled;
 
+    // Feststelltaste hält Tasten gedrückt. Läuft auf dem Hook-Thread und entscheidet sofort.
+    private volatile bool _capsLatch;
+    private readonly KeyLatchLogic _latch = new();
+    private bool _capsOn;
+    /// <summary>Tasten mit Erweitert-Kennung (Pfeile, Einfg …) – fürs künstliche Loslassen.</summary>
+    private readonly HashSet<uint> _extended = [];
+
+    /// <summary>Schaltet „Feststelltaste hält Tasten gedrückt“ ein oder aus.</summary>
+    public void SetCapsLatch(bool on)
+    {
+        if (_capsLatch == on) return;
+        _capsLatch = on;
+        if (!on) ReleaseLatched();
+        UpdateHook();
+    }
+
+    private void ReleaseLatched()
+    {
+        uint[] keys;
+        lock (_latch) keys = _latch.CapsLockOff();
+        SendRelease(keys);
+    }
+
+    /// <summary>Künstliches Loslassen. Nicht im Hook selbst senden (Wiedereintritt), sondern gleich danach.</summary>
+    private void SendRelease(uint[] keys)
+    {
+        if (keys.Length == 0) return;
+        var inputs = keys.Select(k =>
+        {
+            var i = Native.Key((ushort)k, up: true);
+            if (_extended.Contains(k)) i.U.Keyboard.Flags |= Native.KEYEVENTF_EXTENDEDKEY;
+            return i;
+        }).ToArray();
+        ThreadPool.QueueUserWorkItem(_ => Native.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<Native.INPUT>()));
+    }
+
+    /// <returns>true, wenn das Ereignis verschluckt werden soll.</returns>
+    private bool HandleLatch(uint vk, bool down, uint flags)
+    {
+        if (vk == 0x14) // Feststelltaste: Zustand selbst mitführen, beim Ausschalten alles loslassen
+        {
+            if (down && !_latchCapsHeld) { _capsOn = !_capsOn; _latchCapsHeld = true; if (!_capsOn) ReleaseLatched(); }
+            if (!down) _latchCapsHeld = false;
+            return false;
+        }
+        if ((flags & Native.LLKHF_EXTENDED) != 0) _extended.Add(vk);
+        lock (_latch)
+        {
+            if (down)
+            {
+                var modifiers = Native.IsKeyDown(Native.VK_CONTROL) || Native.IsKeyDown(Native.VK_MENU)
+                                || Native.IsKeyDown(Native.VK_LWIN) || Native.IsKeyDown(Native.VK_RWIN);
+                var (verdict, release) = _latch.KeyDown(vk, _capsOn, modifiers);
+                SendRelease(release);
+                return verdict == KeyLatchLogic.Verdict.Swallow;
+            }
+            return _latch.KeyUp(vk) == KeyLatchLogic.Verdict.Swallow;
+        }
+    }
+
+    private bool _latchCapsHeld;
+
     /// <summary>Registrierungsstatus hat sich geändert (für die Anzeige in den Einstellungen).</summary>
     public event Action? Changed;
 
@@ -164,7 +226,7 @@ internal sealed class HotkeyManager
 
     private void UpdateHook()
     {
-        var needed = _bindings.Values.Any(b => b.Hotkey.IsModifierOnly);
+        var needed = _capsLatch || _bindings.Values.Any(b => b.Hotkey.IsModifierOnly);
         if (needed && _hookThread == null) StartHook();
         else if (!needed && _hookThread != null) StopHook();
     }
@@ -180,6 +242,7 @@ internal sealed class HotkeyManager
         {
             _hookThreadId = Native.GetCurrentThreadId();
             _hookProc = HookProc; // Referenz halten, sonst räumt die Laufzeit den Rückruf weg
+            _capsOn = (Native.GetKeyState(0x14) & 1) != 0;
             _hook = Native.SetWindowsHookEx(Native.WH_KEYBOARD_LL, _hookProc, Native.GetModuleHandle(null), 0);
             var error = Marshal.GetLastWin32Error();
             ready.Set();
@@ -218,6 +281,7 @@ internal sealed class HotkeyManager
                 var message = wParam.ToInt32();
                 var down = message is Native.WM_KEYDOWN or Native.WM_SYSKEYDOWN;
                 var vk = data.VkCode;
+                if (_capsLatch && HandleLatch(vk, down, data.Flags)) return (IntPtr)1;
                 _dispatcher.BeginInvoke(() => HandleModifierEvent(vk, down), DispatcherPriority.Input);
             }
         }

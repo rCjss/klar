@@ -8,12 +8,6 @@ namespace Klar;
 
 internal sealed class SettingsPage : Page
 {
-    private static readonly (string Id, string Name)[] Locales =
-    [
-        ("de-DE", "Deutsch"), ("en-US", "English (US)"), ("en-GB", "English (UK)"),
-        ("fr-FR", "Français"), ("es-ES", "Español"), ("it-IT", "Italiano"),
-    ];
-
     private readonly ScrollViewer _scroll;
     private readonly StackPanel _content = new();
     private TextBlock? _modelStatus;
@@ -82,15 +76,22 @@ internal sealed class SettingsPage : Page
 
         // Sprache
         Add(Ui.SectionLabel("Sprache"));
-        Add(Choice(Locales.Select(l => (l.Id, l.Name)), settings.LocaleIdentifier, id => { settings.LocaleIdentifier = id; Refresh(); }), 14);
+        Add(Choice(SpeechLanguages.All.Select(l => (l.Id, l.Name)), settings.LocaleIdentifier, id => { settings.LocaleIdentifier = id; Refresh(); }), 14);
         Add(Ui.DotToggle("Diktat direkt in die aktive App einfügen", settings.PasteAfterDictation, v => settings.PasteAfterDictation = v), 14);
         Add(Ui.DotToggle("Bei Bildschirmaufnahmen auch das Mikrofon aufnehmen", settings.RecordMicInScreenRecording, v => settings.RecordMicInScreenRecording = v), 48);
 
         // Spracherkennung
         Add(Ui.SectionLabel("Spracherkennung"));
-        Add(Ui.Note("Diktat und Meetings werden lokal auf dem Gerät erkannt (Whisper). Das Sprachmodell wird einmalig von Hugging Face geladen; danach verlässt kein Ton den PC. Größere Modelle erkennen genauer, brauchen aber länger."), 16);
-        Add(Choice(SpeechModels.All.Select(m => (m.Id, $"{m.Label} ({m.Detail})")), SpeechService.Shared.Model.Id,
-            id => { settings.WhisperModel = id; Refresh(); }), 10);
+        Add(Ui.Note("Diktat und Meetings werden lokal auf dem Gerät erkannt. Das Sprachmodell wird einmalig von Hugging Face geladen; danach verlässt kein Ton den PC. Whisper Large-v3 ist am genauesten, Large-v3 Turbo fast so genau und deutlich schneller. Parakeet ist sehr schnell und erkennt 25 europäische Sprachen von selbst, aber kein Türkisch."), 16);
+        foreach (var m in SpeechModels.All)
+        {
+            var model = m;
+            var selected = SpeechService.Shared.Model.Id == model.Id;
+            var button = Ui.TextButton((selected ? "● " : "○ ") + model.Label, () => { settings.WhisperModel = model.Id; Refresh(); }, prominent: selected);
+            button.Width = 240;
+            button.HorizontalContentAlignment = HorizontalAlignment.Left;
+            Add(Ui.HStack(0, button, Ui.Note(model.IsDownloaded ? model.Detail + " · geladen" : model.Detail)), 8);
+        }
         _modelStatus = Ui.Note(SpeechService.Shared.StatusText);
         var modelRow = Ui.HStack(18, _modelStatus,
             !SpeechService.Shared.IsReady && !ModelDownloader.Shared.IsBusy

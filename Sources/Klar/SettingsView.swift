@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import KlarSpeech
 
 @MainActor struct SettingsView: View {
     @ObservedObject var settings = Settings.shared
@@ -7,11 +8,6 @@ import AppKit
     @State private var launchAtLogin = AppDelegate.launchesAtLogin
     @State private var loginError: String?
     @State private var permissionsTick = 0
-
-    private let locales: [(String, String)] = [
-        ("de-DE", "Deutsch"), ("en-US", "English (US)"), ("en-GB", "English (UK)"),
-        ("fr-FR", "Français"), ("es-ES", "Español"), ("it-IT", "Italiano"),
-    ]
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -32,8 +28,10 @@ import AppKit
 
                 SectionLabel(text: "Sprache")
                 HStack(spacing: 28) {
-                    ForEach(locales, id: \.0) { id, name in
-                        PlainTextButton(title: name, prominent: settings.localeIdentifier == id) { settings.localeIdentifier = id }
+                    ForEach(SpeechLanguage.all) { language in
+                        PlainTextButton(title: language.name, prominent: settings.localeIdentifier == language.id) {
+                            settings.localeIdentifier = language.id
+                        }
                     }
                 }
                 .padding(.bottom, 16)

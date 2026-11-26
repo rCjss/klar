@@ -5,10 +5,11 @@ using Xunit.Abstractions;
 namespace Klar.Core.Tests;
 
 /// <summary>Echter Durchlauf mit Whisper: WAV → 16 kHz → Abschnitte → Text → Sprachbefehle.
-/// Läuft nur, wenn KLAR_WHISPER_MODEL (Modelldatei) und KLAR_TEST_WAV (16-Bit-PCM-WAV) gesetzt sind.</summary>
+/// Läuft nur, wenn KLAR_WHISPER_MODEL (Modelldatei) und KLAR_TEST_WAV (16-Bit-PCM-WAV) gesetzt sind.
+/// Parakeet: KLAR_PARAKEET_MODEL (Modellordner) und KLAR_PARAKEET_WAVS (Ordner mit de.wav, en.wav, …).</summary>
 public class WhisperEndToEndTests(ITestOutputHelper output)
 {
-    private static (float[] Interleaved, int Rate, int Channels) ReadWav(string path)
+    internal static (float[] Interleaved, int Rate, int Channels) ReadWav(string path)
     {
         var b = File.ReadAllBytes(path);
         int rate = 0, channels = 0, bits = 0;
@@ -73,5 +74,32 @@ public class WhisperEndToEndTests(ITestOutputHelper output)
         Assert.Contains("Hallo Anna\n", result.Text);
         Assert.EndsWith("Viele Grüße\nFelix", result.Text);
         Assert.Equal("Signatur", result.UsedSnippet);
+    }
+
+    [Theory]
+    [InlineData("de", "Guten Morgen")]
+    [InlineData("en", "Good morning")]
+    [InlineData("ro", "Bună dimineața")]
+    [InlineData("pl", "Dzień dobry")]
+    public async Task Parakeet_RecognizesEachLanguage(string language, string expected)
+    {
+        var model = Environment.GetEnvironmentVariable("KLAR_PARAKEET_MODEL");
+        var wavs = Environment.GetEnvironmentVariable("KLAR_PARAKEET_WAVS");
+        if (string.IsNullOrEmpty(model) || string.IsNullOrEmpty(wavs)) return;
+
+        var (audio, rate, channels) = ReadWav(Path.Combine(wavs, language + ".wav"));
+        using var parakeet = LocalTranscriber.Create(model);
+        Assert.IsType<ParakeetTranscriber>(parakeet);
+        var session = new TranscriptionSession(parakeet, language);
+        var parts = new List<string>();
+        session.Committed += (t, _) => { lock (parts) parts.Add(t); };
+        var resampler = new Resampler(rate, channels);
+        var block = rate / 100 * channels;
+        for (var o = 0; o < audio.Length; o += block)
+            session.Append(resampler.Process(audio.AsSpan(o, Math.Min(block, audio.Length - o))));
+        await session.StopAsync();
+        var text = string.Join(" ", parts);
+        output.WriteLine($"{language}: {text}");
+        Assert.Contains(expected, text, StringComparison.OrdinalIgnoreCase);
     }
 }

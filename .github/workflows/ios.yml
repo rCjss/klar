@@ -1,0 +1,88 @@
+# Baut die iPhone-Fassung auf einem Mac mit Xcode, prüft die Erkennung im Simulator und legt eine
+# unsignierte .ipa ab (bei Tags auch am Release). Zum Installieren muss sie signiert werden – siehe ios/README.md.
+name: iOS
+
+on:
+  push:
+    branches: [main]
+    paths: ['ios/**', 'Sources/KlarSpeech/**', 'Sources/KlarRecognizers/**', 'fetch-whisper.sh', '.github/workflows/ios.yml']
+    tags: ['v*']
+  pull_request:
+    paths: ['ios/**', 'Sources/KlarSpeech/**', 'Sources/KlarRecognizers/**', 'fetch-whisper.sh', '.github/workflows/ios.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 60
+    permissions:
+      contents: write   # nur für das Anhängen der .ipa an ein Release (bei Tags)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Werkzeuge und Bibliotheken
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          xcodebuild -version
+          brew install xcodegen
+          ./fetch-whisper.sh --ios
+          cd ios && xcodegen generate
+
+      - name: Modelle und Testaufnahmen
+        run: |
+          M="$RUNNER_TEMP/models"; W="$RUNNER_TEMP/wavs"
+          mkdir -p "$M/parakeet-tdt-0.6b-v3" "$W"
+          P=https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/ed5d745623472f97cfc2e6c2916ee248798fc5a8
+          for f in encoder.int8.onnx decoder.int8.onnx joiner.int8.onnx tokens.txt; do
+            curl -fsSL --retry 3 -o "$M/parakeet-tdt-0.6b-v3/$f" "$P/$f"
+          done
+          curl -fsSL --retry 3 -o "$M/ggml-large-v3-turbo-q5_0.bin" \
+            https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-large-v3-turbo-q5_0.bin
+          # Testsätze mit den Systemstimmen, soweit auf dem Rechner vorhanden
+          speak() { v=$(say -v '?' | awk -v l="$2" '$0 ~ l {print $1; exit}'); [ -n "$v" ] && say -v "$v" -o "$W/$1.aiff" "$3" && afconvert -f WAVE -d LEI16@16000 -c 1 "$W/$1.aiff" "$W/$1.wav" || echo "keine Stimme für $2"; }
+          speak de de_DE "Guten Morgen, ich diktiere hier einen kurzen Text für die neue Modellauswahl."
+          speak en en_US "Good morning, this is a short dictation test for the new model selection."
+          speak ro ro_RO "Bună dimineața, acesta este un scurt test de dictare pentru noua selecție de modele."
+          speak pl pl_PL "Dzień dobry, to jest krótki test dyktowania dla nowego wyboru modelu."
+          speak tr tr_TR "Günaydın, bu yeni model seçimi için kısa bir dikte testidir."
+          ls -la "$W"
+          echo "KLAR_MODELS=$M" >> "$GITHUB_ENV"
+          echo "KLAR_WAVS=$W" >> "$GITHUB_ENV"
+
+      - name: Tests im Simulator (inkl. Parakeet und Whisper Turbo)
+        working-directory: ios
+        run: |
+          SIM=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k in sorted(d, reverse=True) if 'iOS' in k for x in d[k] if x['name'].startswith('iPhone')))")
+          echo "Simulator: $SIM"
+          TEST_RUNNER_KLAR_MODELS="$KLAR_MODELS" TEST_RUNNER_KLAR_WAVS="$KLAR_WAVS" \
+          xcodebuild test -project KlarMobile.xcodeproj -scheme Klar -destination "id=$SIM" \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$RUNNER_TEMP/test.log" | grep -E "error:|warning: .*Klar/|Test Case|Executed|Whisper|Parakeet|\*\* TEST" || true
+          grep -q "\*\* TEST SUCCEEDED \*\*" "$RUNNER_TEMP/test.log"
+
+      - name: App für das iPhone bauen (unsigniert)
+        working-directory: ios
+        run: |
+          xcodebuild build -project KlarMobile.xcodeproj -scheme Klar -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" 2>&1 | grep -E "error:|\*\* BUILD" || true
+          APP="$RUNNER_TEMP/dd/Build/Products/Release-iphoneos/Klar.app"
+          test -d "$APP"
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Info.plist")
+          mkdir -p "$RUNNER_TEMP/ipa/Payload" && cp -R "$APP" "$RUNNER_TEMP/ipa/Payload/"
+          (cd "$RUNNER_TEMP/ipa" && zip -qry "$GITHUB_WORKSPACE/Klar-$VERSION-iOS-unsigned.ipa" Payload)
+          ls -la "$GITHUB_WORKSPACE"/*.ipa
+          echo "IPA=Klar-$VERSION-iOS-unsigned.ipa" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Klar-iOS
+          path: ${{ env.IPA }}
+
+      - name: An Release anhängen
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" "$IPA" --clobber

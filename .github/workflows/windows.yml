@@ -51,14 +51,22 @@ jobs:
           foreach ($dir in 'dist/Klar', 'dist/Klar/runtimes/win-x64', 'dist/Klar/recorder') { $files | Copy-Item -Destination $dir }
           $files | ForEach-Object Name
 
-      - name: Sprachmodell und Testaufnahme für den Selbsttest
+      - name: Sprachmodelle und Testaufnahme für den Selbsttest
         run: |
+          $ProgressPreference = 'SilentlyContinue'   # sonst lädt Invoke-WebRequest große Dateien sehr langsam
           Invoke-WebRequest 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin' -OutFile "$env:RUNNER_TEMP\ggml-base-q5_1.bin"
           Add-Type -AssemblyName System.Speech
           $voice = New-Object System.Speech.Synthesis.SpeechSynthesizer
           $voice.SetOutputToWaveFile("$env:RUNNER_TEMP\test.wav")
           $voice.Speak('Hello, this is a short test of the dictation feature.')
           $voice.Dispose()
+          # Parakeet TDT 0.6B v3: vier Dateien in einem Ordner (wie Klar sie selbst lädt)
+          $dir = "$env:RUNNER_TEMP\parakeet"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          $base = 'https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/ed5d745623472f97cfc2e6c2916ee248798fc5a8'
+          foreach ($f in 'encoder.int8.onnx', 'decoder.int8.onnx', 'joiner.int8.onnx', 'tokens.txt') {
+            Invoke-WebRequest "$base/$f" -OutFile "$dir\$f"
+          }
 
       - name: Selbsttest (alle Fenster und Systemfunktionen)
         env:
@@ -71,6 +79,19 @@ jobs:
           if (-not $p.WaitForExit(300000)) { $p.Kill(); throw 'Selbsttest hängt.' }
           if (Test-Path $report) { Get-Content $report -Encoding UTF8 } else { throw 'Kein Bericht geschrieben – Klar ist beim Start abgestürzt.' }
           if ($p.ExitCode -ne 0) { throw "Selbsttest: $($p.ExitCode) Fehler." }
+
+      - name: Selbsttest mit Parakeet
+        env:
+          KLAR_SELFTEST_MODEL: ${{ runner.temp }}\parakeet
+          KLAR_SELFTEST_WAV: ${{ runner.temp }}\test.wav
+          KLAR_SELFTEST_LANG: en
+        run: |
+          $report = "$env:RUNNER_TEMP\klar-selftest-parakeet.txt"
+          $p = Start-Process -FilePath dist/Klar/Klar.exe -ArgumentList '--selftest', "`"$report`"" -PassThru
+          if (-not $p.WaitForExit(300000)) { $p.Kill(); throw 'Selbsttest hängt.' }
+          if (Test-Path $report) { Get-Content $report -Encoding UTF8 } else { throw 'Kein Bericht geschrieben – Klar ist beim Start abgestürzt.' }
+          if ($p.ExitCode -ne 0) { throw "Selbsttest: $($p.ExitCode) Fehler." }
+          if (-not (Select-String -Path $report -Pattern 'Spracherkennung.*„' -Quiet)) { throw 'Parakeet hat keinen Text erkannt.' }
 
       - name: Starttest (normaler Start im Hintergrund)
         run: |

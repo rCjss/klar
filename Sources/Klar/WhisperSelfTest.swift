@@ -1,9 +1,10 @@
 import AVFoundation
 import Foundation
+import KlarSpeech
 
-/// Selbsttest der Whisper-Erkennung ohne Oberfläche:
+/// Selbsttest der lokalen Erkennung (Whisper, Parakeet) ohne Oberfläche:
 ///
-///     Klar.app/Contents/MacOS/Klar --whisper-selftest aufnahme.wav [--locale de-DE] [--model small]
+///     Klar.app/Contents/MacOS/Klar --whisper-selftest aufnahme.wav [--locale de-DE] [--model parakeet-tdt-0.6b-v3]
 ///
 /// Spielt die Audiodatei wie ein Mikrofon ein und gibt den erkannten Text aus. Prüft damit die ganze
 /// Kette – Modell, Hilfsprozess, Signatur der App –, ohne Einstellungen zu lesen oder zu ändern.
@@ -18,13 +19,14 @@ enum WhisperSelfTest {
             return args[i + 1]
         }
         guard flag + 1 < args.count else {
-            print("Aufruf: Klar --whisper-selftest <Audiodatei> [--locale de-DE] [--model base|small|large-v3-turbo]")
+            print("Aufruf: Klar --whisper-selftest <Audiodatei> [--locale de-DE] [--model "
+                  + SpeechModels.all.map(\.id).joined(separator: "|") + "]")
             exit(2)
         }
         setvbuf(stdout, nil, _IONBF, 0)
         let path = args[flag + 1]
         let locale = value("--locale") ?? "de-DE"
-        let model = WhisperModel.find(value("--model") ?? WhisperModel.balanced.id)
+        let model = SpeechModels.find(value("--model"))
         Task { @MainActor in
             let ok = await run(path: path, locale: locale, model: model)
             WhisperEngine.shared.shutdown()
@@ -34,12 +36,12 @@ enum WhisperSelfTest {
     }
 
     @MainActor
-    private static func run(path: String, locale: String, model: WhisperModel) async -> Bool {
-        print("Modell: \(model.label) (\(model.fileName)), Sprache: \(locale)")
+    private static func run(path: String, locale: String, model: SpeechModel) async -> Bool {
+        print("Modell: \(model.label) (\(model.sizeLabel)), Sprache: \(locale)")
         var lastStatus = ""
         guard let session = await WhisperSession.make(localeIdentifier: locale, model: model, vocabulary: nil,
                                                       status: { lastStatus = $0 }) else {
-            print("FEHLER: " + (WhisperSession.lastError ?? "Whisper konnte nicht gestartet werden."))
+            print("FEHLER: " + (WhisperSession.lastError ?? "Die lokale Erkennung konnte nicht gestartet werden."))
             return false
         }
         if !lastStatus.isEmpty { print(lastStatus) }

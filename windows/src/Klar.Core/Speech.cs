@@ -2,22 +2,56 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
+using SherpaOnnx;
 using Whisper.net;
 
 namespace Klar.Core;
 
 // MARK: - Sprachmodelle
 
-/// <summary>Whisper-Modell für die lokale Spracherkennung. Wird einmalig von Hugging Face geladen.</summary>
-public sealed record SpeechModel(string Id, string Label, string FileName, long Bytes, string Detail)
+/// <summary>Womit ein Modell gerechnet wird.</summary>
+public enum SpeechModelKind
 {
-    public string Url => "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/" + FileName;
-    public string FilePath => Path.Combine(Storage.Models, FileName);
+    /// <summary>whisper.cpp, eine einzelne ggml-Datei.</summary>
+    Whisper,
+    /// <summary>NVIDIA Parakeet über sherpa-onnx, ein Ordner mit Encoder, Decoder, Joiner und Tokens.</summary>
+    Parakeet,
+}
+
+/// <summary>Eine Datei eines Modells. Die Prüfsumme stellt sicher, dass genau diese Datei ankommt.</summary>
+public sealed record SpeechModelFile(string Name, long Bytes, string Sha256);
+
+/// <summary>Lokales Sprachmodell. Wird einmalig von Hugging Face geladen und liegt danach auf dem Gerät.
+/// Dieselbe Liste führt die Mac- und iPhone-Fassung in Sources/KlarSpeech/SpeechModels.swift.</summary>
+public sealed record SpeechModel(string Id, string Label, SpeechModelKind Kind, string BaseUrl,
+    IReadOnlyList<SpeechModelFile> Files, IReadOnlySet<string>? Languages)
+{
+    public long Bytes => Files.Sum(f => f.Bytes);
+
+    /// <summary>„574 MB“, „1,1 GB“.</summary>
+    public string Detail => Bytes < 1_000_000_000
+        ? $"{Math.Round(Bytes / 1e6):0} MB"
+        : (Bytes / 1e9).ToString("0.0", System.Globalization.CultureInfo.GetCultureInfo("de-DE")) + " GB";
+
+    /// <summary>Datei (Whisper) oder Ordner (Parakeet), den die Erkennung öffnet.</summary>
+    public string Path => Kind == SpeechModelKind.Whisper
+        ? System.IO.Path.Combine(Storage.Models, Files[0].Name)
+        : System.IO.Path.Combine(Storage.Models, Id);
+
+    public string FilePath(SpeechModelFile file) => Kind == SpeechModelKind.Whisper
+        ? System.IO.Path.Combine(Storage.Models, file.Name)
+        : System.IO.Path.Combine(Path, file.Name);
+
+    public string Url(SpeechModelFile file) => BaseUrl + file.Name;
+
+    public bool Supports(string languageCode) => Languages?.Contains(languageCode) ?? true;
+
+    /// <summary>Alle Dateien vorhanden und vollständig.</summary>
     public bool IsDownloaded
     {
         get
         {
-            try { return new FileInfo(FilePath) is { Exists: true, Length: > 1_000_000 }; }
+            try { return Files.All(f => new FileInfo(FilePath(f)) is { Exists: true } info && info.Length == f.Bytes); }
             catch { return false; }
         }
     }
@@ -25,12 +59,64 @@ public sealed record SpeechModel(string Id, string Label, string FileName, long 
 
 public static class SpeechModels
 {
-    public static readonly SpeechModel Fast = new("base", "Schnell", "ggml-base-q5_1.bin", 59_707_625, "60 MB");
-    public static readonly SpeechModel Default = new("small", "Ausgewogen", "ggml-small-q5_1.bin", 190_085_487, "190 MB");
-    public static readonly SpeechModel Accurate = new("large-v3-turbo", "Genau", "ggml-large-v3-turbo-q5_0.bin", 574_041_195, "574 MB");
-    public static readonly IReadOnlyList<SpeechModel> All = [Fast, Default, Accurate];
+    private const string WhisperBase =
+        "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/";
+    private const string ParakeetBase =
+        "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/ed5d745623472f97cfc2e6c2916ee248798fc5a8/";
 
+    /// <summary>Die 25 europäischen Sprachen von Parakeet TDT 0.6B v3. Türkisch gehört nicht dazu.</summary>
+    public static readonly IReadOnlySet<string> ParakeetLanguages = new HashSet<string>
+    {
+        "bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt",
+        "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk",
+    };
+
+    public static readonly SpeechModel LargeV3 = new("large-v3", "Whisper Large-v3", SpeechModelKind.Whisper, WhisperBase,
+        [new("ggml-large-v3-q5_0.bin", 1_081_140_203, "d75795ecff3f83b5faa89d1900604ad8c780abd5739fae406de19f23ecd98ad1")], null);
+
+    public static readonly SpeechModel LargeV3Turbo = new("large-v3-turbo", "Whisper Large-v3 Turbo", SpeechModelKind.Whisper, WhisperBase,
+        [new("ggml-large-v3-turbo-q5_0.bin", 574_041_195, "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2")], null);
+
+    public static readonly SpeechModel ParakeetV3 = new("parakeet-tdt-0.6b-v3", "Parakeet TDT 0.6B v3", SpeechModelKind.Parakeet, ParakeetBase,
+        [
+            new("encoder.int8.onnx", 652_282_294, "1afbe69c1ffdabee94755f42e4daf1d93549131a3da11356bda84fcef0f2c479"),
+            new("decoder.int8.onnx", 11_845_274, "0222a86147299d4dee90edf95b6d13827edb42ad8b7c9cf0b2582f030937c0b5"),
+            new("joiner.int8.onnx", 6_355_277, "cbd02f3696e9944970111fb439d9c3fd365a80374565f13f2b9c7007d253fc98"),
+            new("tokens.txt", 93_939, "d58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d"),
+        ], ParakeetLanguages);
+
+    public static readonly SpeechModel Default = LargeV3Turbo;
+    public static readonly IReadOnlyList<SpeechModel> All = [LargeV3, LargeV3Turbo, ParakeetV3];
+
+    /// <summary>Frühere Modelle („base“, „small“) gibt es nicht mehr; sie werden zum Turbo-Modell.</summary>
     public static SpeechModel Find(string? id) => All.FirstOrDefault(m => m.Id == id) ?? Default;
+}
+
+/// <summary>Sprachen, in denen Klar diktiert.</summary>
+public sealed record SpeechLanguage(string Id, string Name)
+{
+    public string Code => Id.Split('-')[0].ToLowerInvariant();
+}
+
+public static class SpeechLanguages
+{
+    public static readonly IReadOnlyList<SpeechLanguage> All =
+    [
+        new("de-DE", "Deutsch"),
+        new("en-US", "Englisch"),
+        new("ro-RO", "Rumänisch"),
+        new("pl-PL", "Polnisch"),
+        new("tr-TR", "Türkisch"),
+    ];
+
+    /// <summary>Unbekannte oder nicht mehr angebotene Einstellungen werden zur passenden Sprache oder zu Deutsch.</summary>
+    public static SpeechLanguage Find(string? id)
+    {
+        var exact = All.FirstOrDefault(l => l.Id == id);
+        if (exact != null) return exact;
+        var code = (id ?? "").Split('-')[0].ToLowerInvariant();
+        return All.FirstOrDefault(l => l.Code == code) ?? All[0];
+    }
 }
 
 /// <summary>Lädt Sprachmodelle herunter. Ereignisse kommen über <see cref="UiThread"/>.</summary>
@@ -67,50 +153,82 @@ public sealed class ModelDownloader
 
     private async Task DownloadAsync(SpeechModel model)
     {
-        var part = model.FilePath + ".part";
         try
         {
-            // Bleibt die Verbindung eine Minute lang stehen, bricht der Download ab und lässt sich neu starten.
-            using var stall = new CancellationTokenSource();
-            stall.CancelAfter(TimeSpan.FromSeconds(60));
-            using var response = await Http.GetAsync(model.Url, HttpCompletionOption.ResponseHeadersRead, stall.Token).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-            var total = response.Content.Headers.ContentLength ?? model.Bytes;
-            await using (var input = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-            await using (var output = new FileStream(part, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16))
+            if (model.Kind == SpeechModelKind.Parakeet) Directory.CreateDirectory(model.Path);
+            long before = 0;
+            var lastStep = -1;
+            foreach (var file in model.Files)
             {
-                var buffer = new byte[1 << 16];
-                long done = 0;
-                var lastStep = -1;
-                int n;
-                while ((n = await input.ReadAsync(buffer, stall.Token).ConfigureAwait(false)) > 0)
+                var target = model.FilePath(file);
+                if (new FileInfo(target) is not { Exists: true } info || info.Length != file.Bytes)
                 {
-                    stall.CancelAfter(TimeSpan.FromSeconds(60));
-                    await output.WriteAsync(buffer.AsMemory(0, n)).ConfigureAwait(false);
-                    done += n;
-                    var step = (int)(done * 100 / Math.Max(1, total));
-                    if (step != lastStep)
+                    var offset = before;
+                    await DownloadFileAsync(model.Url(file), target, file, done =>
                     {
+                        var step = (int)((offset + done) * 100 / Math.Max(1, model.Bytes));
+                        if (step == lastStep) return;
                         lastStep = step;
-                        Progress = Math.Min(1, done / (double)Math.Max(1, total));
+                        Progress = Math.Min(1, (offset + done) / (double)Math.Max(1, model.Bytes));
                         Notify();
-                    }
+                    }).ConfigureAwait(false);
                 }
-                if (done < total) throw new IOException("Download unvollständig.");
+                before += file.Bytes;
             }
-            File.Move(part, model.FilePath, overwrite: true);
             Progress = 1;
         }
         catch (Exception e)
         {
-            try { File.Delete(part); } catch { }
-            Error = "Sprachmodell konnte nicht geladen werden: " + (e is OperationCanceledException ? "Die Verbindung steht still." : e.Message);
+            Error = "Sprachmodell konnte nicht geladen werden: " + e switch
+            {
+                OperationCanceledException => "Die Verbindung steht still.",
+                InvalidDataException => "Die Datei ist beschädigt angekommen.",
+                _ => e.Message,
+            };
             Log.Write(Error);
         }
         finally
         {
             Active = null;
             Notify();
+        }
+    }
+
+    /// <summary>Eine Datei laden, Größe und SHA-256 prüfen, dann an ihren Platz legen.</summary>
+    private static async Task DownloadFileAsync(string url, string target, SpeechModelFile file, Action<long> progress)
+    {
+        var part = target + ".part";
+        try
+        {
+            // Bleibt die Verbindung eine Minute lang stehen, bricht der Download ab und lässt sich neu starten.
+            using var stall = new CancellationTokenSource();
+            stall.CancelAfter(TimeSpan.FromSeconds(60));
+            using var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, stall.Token).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            using var sha = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
+            await using (var input = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
+            await using (var output = new FileStream(part, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16))
+            {
+                var buffer = new byte[1 << 16];
+                long done = 0;
+                int n;
+                while ((n = await input.ReadAsync(buffer, stall.Token).ConfigureAwait(false)) > 0)
+                {
+                    stall.CancelAfter(TimeSpan.FromSeconds(60));
+                    await output.WriteAsync(buffer.AsMemory(0, n)).ConfigureAwait(false);
+                    sha.AppendData(buffer, 0, n);
+                    done += n;
+                    progress(done);
+                }
+                if (done != file.Bytes) throw new IOException("Download unvollständig.");
+            }
+            if (Convert.ToHexStringLower(sha.GetHashAndReset()) != file.Sha256) throw new InvalidDataException("Prüfsumme stimmt nicht.");
+            File.Move(part, target, overwrite: true);
+        }
+        catch
+        {
+            try { File.Delete(part); } catch { }
+            throw;
         }
     }
 
@@ -578,8 +696,31 @@ public sealed class TranscriptionSession
     }
 }
 
+/// <summary>Eine lokale Erkennung mit geladenem Modell (Whisper oder Parakeet).</summary>
+public interface ILocalTranscriber : ITranscriber, IDisposable
+{
+    /// <summary>Datei (Whisper) oder Ordner (Parakeet).</summary>
+    string ModelPath { get; }
+    /// <summary>Zeitpunkt der letzten Erkennung – danach richtet sich, wann das Modell wieder entladen wird.</summary>
+    DateTime LastUsedUtc { get; }
+    bool IsLoaded { get; }
+    /// <summary>Lädt das Modell vorab, damit das erste Diktat nicht darauf warten muss.</summary>
+    Task WarmUpAsync();
+    /// <summary>Gibt das Modell frei. Beim nächsten Aufruf wird es neu geladen.</summary>
+    void Unload();
+}
+
+public static class LocalTranscriber
+{
+    public static ILocalTranscriber Create(SpeechModel model) => Create(model.Path);
+
+    /// <summary>Ein Ordner ist ein Parakeet-Modell, eine Datei ein Whisper-Modell.</summary>
+    public static ILocalTranscriber Create(string path) =>
+        Directory.Exists(path) ? new ParakeetTranscriber(path) : new WhisperTranscriber(path);
+}
+
 /// <summary>Lokale Spracherkennung mit Whisper (whisper.cpp). Ein Modell, Aufrufe laufen nacheinander.</summary>
-public sealed class WhisperTranscriber(string modelPath) : ITranscriber, IDisposable
+public sealed class WhisperTranscriber(string modelPath) : ILocalTranscriber
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private WhisperFactory? _factory;
@@ -664,6 +805,92 @@ public sealed class WhisperTranscriber(string modelPath) : ITranscriber, IDispos
             _factory?.Dispose();
             _processor = null;
             _factory = null;
+        }
+        finally { _gate.Release(); }
+    }
+}
+
+/// <summary>Lokale Spracherkennung mit NVIDIA Parakeet TDT 0.6B v3 über sherpa-onnx. Erkennt die Sprache selbst
+/// (25 europäische Sprachen) und setzt Satzzeichen. Aufrufe laufen nacheinander.</summary>
+public sealed class ParakeetTranscriber(string modelDirectory) : ILocalTranscriber
+{
+    private readonly SemaphoreSlim _gate = new(1, 1);
+    private OfflineRecognizer? _recognizer;
+    private bool _disposed;
+
+    public string ModelPath { get; } = modelDirectory;
+    public DateTime LastUsedUtc { get; private set; } = DateTime.UtcNow;
+    public bool IsLoaded => _recognizer != null;
+
+    private static int Threads => Math.Clamp(Environment.ProcessorCount / 2, 2, 8);
+
+    public Task WarmUpAsync() => TranscribeAsync(new float[Resampler.TargetRate], "de", null, CancellationToken.None);
+
+    private OfflineRecognizer Load()
+    {
+        var config = new OfflineRecognizerConfig();
+        config.FeatConfig.SampleRate = Resampler.TargetRate;
+        config.FeatConfig.FeatureDim = 80;
+        config.ModelConfig.Transducer.Encoder = Path.Combine(ModelPath, "encoder.int8.onnx");
+        config.ModelConfig.Transducer.Decoder = Path.Combine(ModelPath, "decoder.int8.onnx");
+        config.ModelConfig.Transducer.Joiner = Path.Combine(ModelPath, "joiner.int8.onnx");
+        config.ModelConfig.Tokens = Path.Combine(ModelPath, "tokens.txt");
+        config.ModelConfig.ModelType = "nemo_transducer";
+        config.ModelConfig.Provider = "cpu";
+        config.ModelConfig.NumThreads = Threads;
+        config.ModelConfig.Debug = 0;
+        config.DecodingMethod = "greedy_search";
+        foreach (var file in new[] { config.ModelConfig.Transducer.Encoder, config.ModelConfig.Transducer.Decoder,
+                     config.ModelConfig.Transducer.Joiner, config.ModelConfig.Tokens })
+        {
+            if (!File.Exists(file)) throw new FileNotFoundException("Parakeet-Modell unvollständig.", file);
+        }
+        return new OfflineRecognizer(config);
+    }
+
+    /// <param name="language">Wird nicht gebraucht – Parakeet erkennt die Sprache selbst.</param>
+    /// <param name="hint">Wird nicht gebraucht – Parakeet kennt keinen Hinweis auf erwartete Wörter.</param>
+    public async Task<string> TranscribeAsync(float[] samples, string language, string? hint, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            LastUsedUtc = DateTime.UtcNow;
+            return await Task.Run(() =>
+            {
+                _recognizer ??= Load();
+                // Etwas Stille anhängen, sonst fehlt das letzte Wort gelegentlich.
+                var input = new float[samples.Length + Resampler.TargetRate / 4];
+                samples.CopyTo(input, 0);
+                using var stream = _recognizer.CreateStream();
+                stream.AcceptWaveform(Resampler.TargetRate, input);
+                _recognizer.Decode(stream);
+                return (stream.Result.Text ?? "").Trim();
+            }, ct).ConfigureAwait(false);
+        }
+        finally { _gate.Release(); }
+    }
+
+    public void Unload()
+    {
+        _gate.Wait();
+        try
+        {
+            _recognizer?.Dispose();
+            _recognizer = null;
+        }
+        finally { _gate.Release(); }
+    }
+
+    public void Dispose()
+    {
+        _gate.Wait();
+        try
+        {
+            _disposed = true;
+            _recognizer?.Dispose();
+            _recognizer = null;
         }
         finally { _gate.Release(); }
     }

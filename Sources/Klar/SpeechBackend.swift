@@ -1,8 +1,9 @@
 import Speech
 import AVFoundation
+import KlarSpeech
 
 /// Gemeinsame Schnittstelle für Apples Spracherkennung – alt (SFSpeechRecognizer) und
-/// neu (SpeechAnalyzer, macOS 26) – sowie für Whisper.
+/// neu (SpeechAnalyzer, macOS 26) – sowie für die lokalen Modelle (Whisper, Parakeet).
 @MainActor
 protocol SpeechBackend: AnyObject {
     var onPartial: (@MainActor (String) -> Void)? { get set }
@@ -13,7 +14,7 @@ protocol SpeechBackend: AnyObject {
 }
 
 enum SpeechBackendFactory {
-    /// Apples Erkennung braucht die Systemfreigabe „Spracherkennung“, Whisper nicht.
+    /// Apples Erkennung braucht die Systemfreigabe „Spracherkennung“, die lokalen Modelle nicht.
     static var needsSpeechPermission: Bool { SpeechEngine.current == .apple }
 
     /// Liefert die gewählte Erkennung für die Sprache. Lädt bei Bedarf das Sprachmodell.
@@ -23,7 +24,7 @@ enum SpeechBackendFactory {
                      status: (@MainActor (String) -> Void)? = nil) async -> SpeechBackend? {
         if SpeechEngine.current == .whisper {
             return await WhisperSession.make(localeIdentifier: localeIdentifier,
-                                             model: WhisperModel.find(Settings.shared.whisperModel),
+                                             model: LocalModels.selected,
                                              vocabulary: vocabulary, status: status)
         }
         if #available(macOS 26.0, *) {
@@ -40,9 +41,9 @@ extension SpeechBackendFactory {
     @MainActor
     static func unavailableMessage(localeIdentifier: String) -> String {
         if SpeechEngine.current == .whisper {
-            return WhisperSession.lastError ?? "Whisper konnte nicht gestartet werden."
+            return WhisperSession.lastError ?? "Die lokale Erkennung konnte nicht gestartet werden."
         }
-        return "Spracherkennung für \(localeIdentifier) nicht verfügbar."
+        return "Apples Spracherkennung für \(SpeechLanguage.find(localeIdentifier).name) ist nicht verfügbar."
     }
 }
 

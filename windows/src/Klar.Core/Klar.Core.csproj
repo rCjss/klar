@@ -6,6 +6,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Whisper.net" Version="1.9.1" />
+    <!-- Parakeet TDT 0.6B v3 (NVIDIA) über sherpa-onnx; bringt die nativen Bibliotheken für Windows mit. -->
+    <PackageReference Include="org.k2fsa.sherpa.onnx" Version="2.0.3" />
     <InternalsVisibleTo Include="Klar.Core.Tests" />
   </ItemGroup>
 </Project>

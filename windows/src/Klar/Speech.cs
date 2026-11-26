@@ -4,12 +4,12 @@ using NAudio.Wave;
 
 namespace Klar;
 
-/// <summary>Verwaltet das Sprachmodell und die eine Whisper-Instanz der App.</summary>
+/// <summary>Verwaltet das Sprachmodell und die eine Erkennung (Whisper oder Parakeet) der App.</summary>
 internal sealed class SpeechService
 {
     public static SpeechService Shared { get; } = new();
 
-    private WhisperTranscriber? _transcriber;
+    private ILocalTranscriber? _transcriber;
     private readonly System.Windows.Threading.DispatcherTimer _idle;
 
     private SpeechService()
@@ -40,16 +40,22 @@ internal sealed class SpeechService
             return null;
         }
         var model = Model;
+        var language = AppSettings.Shared.Language;
+        if (!model.Supports(language.Code))
+        {
+            problem = $"{model.Label} kennt kein {language.Name}. Bitte in den Einstellungen ein Whisper-Modell wählen.";
+            return null;
+        }
         if (!model.IsDownloaded)
         {
             _ = ModelDownloader.Shared.EnsureAsync(model);
             problem = $"Das Sprachmodell wird einmalig geladen ({model.Detail}). Den Fortschritt zeigen die Einstellungen.";
             return null;
         }
-        if (_transcriber == null || _transcriber.ModelPath != model.FilePath)
+        if (_transcriber == null || _transcriber.ModelPath != model.Path)
         {
             var old = _transcriber;
-            _transcriber = new WhisperTranscriber(model.FilePath);
+            _transcriber = LocalTranscriber.Create(model);
             if (old != null) Task.Run(old.Dispose);
         }
         return _transcriber;
@@ -63,6 +69,8 @@ internal sealed class SpeechService
             var model = Model;
             if (d.Active is { } active) return $"{active.Label} wird geladen … {d.Progress * 100:0} %";
             if (d.Error is { } error && !model.IsDownloaded) return error;
+            var language = AppSettings.Shared.Language;
+            if (!model.Supports(language.Code)) return $"{model.Label} kennt kein {language.Name}. Für {language.Name} bitte ein Whisper-Modell wählen.";
             return model.IsDownloaded ? $"{model.Label} ist geladen und bereit." : $"{model.Label} ist noch nicht geladen ({model.Detail}).";
         }
     }

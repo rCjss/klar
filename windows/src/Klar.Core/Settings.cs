@@ -40,6 +40,9 @@ public sealed class AppSettings : INotifyPropertyChanged
     {
         var s = Storage.Load<AppSettings>(FileName) ?? new AppSettings();
         s._snippets ??= [new Snippet { Trigger = "Signatur", Text = "Viele Grüße\n" + FullUserName() }];
+        // Nicht mehr angebotene Sprachen und Modelle auf die nächstliegenden umstellen.
+        s._localeIdentifier = SpeechLanguages.Find(s._localeIdentifier).Id;
+        s._whisperModel = SpeechModels.Find(s._whisperModel).Id;
         s._claudeApiKey = Secrets.Read("claude-api-key");
         s._giphyApiKey = Secrets.Read("giphy-api-key");
         s._loaded = true;
@@ -149,5 +152,9 @@ public sealed class AppSettings : INotifyPropertyChanged
 
     /// <summary>Sprachcode für die Erkennung, z. B. „de“ aus „de-DE“.</summary>
     [JsonIgnore]
-    public string LanguageCode => LocaleIdentifier.Split('-')[0].ToLowerInvariant();
+    public string LanguageCode => SpeechLanguages.Find(LocaleIdentifier).Code;
+
+    /// <summary>Gewählte Sprache mit Namen.</summary>
+    [JsonIgnore]
+    public SpeechLanguage Language => SpeechLanguages.Find(LocaleIdentifier);
 }

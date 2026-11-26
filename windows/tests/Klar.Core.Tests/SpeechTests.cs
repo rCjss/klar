@@ -293,11 +293,60 @@ public class SpeechModelTests : StorageTest
     [Fact]
     public void Catalog()
     {
-        Assert.Equal("small", SpeechModels.Default.Id);
+        Assert.Equal(["large-v3", "large-v3-turbo", "parakeet-tdt-0.6b-v3"], SpeechModels.All.Select(m => m.Id));
+        Assert.Equal("large-v3-turbo", SpeechModels.Default.Id);
         Assert.Same(SpeechModels.Default, SpeechModels.Find("gibt-es-nicht"));
-        Assert.Same(SpeechModels.Accurate, SpeechModels.Find("large-v3-turbo"));
-        Assert.EndsWith("/ggml-small-q5_1.bin", SpeechModels.Default.Url);
-        Assert.False(SpeechModels.Default.IsDownloaded);
-        Assert.StartsWith(Path.Combine(Dir, "Models"), SpeechModels.Default.FilePath);
+        // Frühere Modelle werden zum Turbo-Modell.
+        Assert.Same(SpeechModels.LargeV3Turbo, SpeechModels.Find("small"));
+        Assert.Same(SpeechModels.LargeV3Turbo, SpeechModels.Find("base"));
+        Assert.Same(SpeechModels.ParakeetV3, SpeechModels.Find("parakeet-tdt-0.6b-v3"));
+        var turbo = SpeechModels.LargeV3Turbo;
+        Assert.EndsWith("/ggml-large-v3-turbo-q5_0.bin", turbo.Url(turbo.Files[0]));
+        Assert.Equal("574 MB", turbo.Detail);
+        Assert.Equal("1,1 GB", SpeechModels.LargeV3.Detail);
+        Assert.False(turbo.IsDownloaded);
+        Assert.StartsWith(Path.Combine(Dir, "Models"), turbo.Path);
+        Assert.All(SpeechModels.All.SelectMany(m => m.Files), f => Assert.Matches("^[0-9a-f]{64}$", f.Sha256));
+    }
+
+    [Fact]
+    public void Parakeet_IsAFolderOfFourFiles()
+    {
+        var p = SpeechModels.ParakeetV3;
+        Assert.Equal(SpeechModelKind.Parakeet, p.Kind);
+        Assert.Equal(Path.Combine(Dir, "Models", "parakeet-tdt-0.6b-v3"), p.Path);
+        Assert.Equal(["encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"], p.Files.Select(f => f.Name));
+        Assert.Equal(Path.Combine(p.Path, "tokens.txt"), p.FilePath(p.Files[3]));
+        Assert.Equal(670_576_784, p.Bytes);
+
+        // Erst wenn jede Datei genau die erwartete Größe hat, gilt das Modell als geladen.
+        Directory.CreateDirectory(p.Path);
+        foreach (var f in p.Files.Take(3)) File.WriteAllBytes(p.FilePath(f), new byte[1]);
+        Assert.False(p.IsDownloaded);
+        Assert.IsType<ParakeetTranscriber>(LocalTranscriber.Create(p));
+        Assert.IsType<WhisperTranscriber>(LocalTranscriber.Create(SpeechModels.LargeV3));
+    }
+
+    [Theory]
+    [InlineData("de", true)]
+    [InlineData("en", true)]
+    [InlineData("ro", true)]
+    [InlineData("pl", true)]
+    [InlineData("tr", false)]
+    public void Parakeet_Languages(string code, bool supported)
+    {
+        Assert.Equal(supported, SpeechModels.ParakeetV3.Supports(code));
+        Assert.True(SpeechModels.LargeV3.Supports(code));
+        Assert.True(SpeechModels.LargeV3Turbo.Supports(code));
+    }
+
+    [Fact]
+    public void Languages()
+    {
+        Assert.Equal(["de-DE", "en-US", "ro-RO", "pl-PL", "tr-TR"], SpeechLanguages.All.Select(l => l.Id));
+        Assert.Equal("tr", SpeechLanguages.Find("tr-TR").Code);
+        Assert.Equal("en-US", SpeechLanguages.Find("en-GB").Id);
+        Assert.Equal("de-DE", SpeechLanguages.Find("fr-FR").Id);
+        Assert.Equal("de-DE", SpeechLanguages.Find(null).Id);
     }
 }

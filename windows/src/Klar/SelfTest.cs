@@ -206,9 +206,9 @@ internal sealed class SelfTest(App app)
         await Optional("Spracherkennung", async () =>
         {
             var path = Environment.GetEnvironmentVariable("KLAR_SELFTEST_MODEL");
-            if (string.IsNullOrEmpty(path)) path = SpeechService.Shared.Model.IsDownloaded ? SpeechService.Shared.Model.FilePath : null;
+            if (string.IsNullOrEmpty(path)) path = SpeechService.Shared.Model.IsDownloaded ? SpeechService.Shared.Model.Path : null;
             if (path == null) return "übersprungen (kein Sprachmodell geladen)";
-            using var whisper = new WhisperTranscriber(path);
+            using var whisper = LocalTranscriber.Create(path);
             var wav = Environment.GetEnvironmentVariable("KLAR_SELFTEST_WAV");
             var watch = Stopwatch.StartNew();
             if (string.IsNullOrEmpty(wav))

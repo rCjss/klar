@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import KlarSpeech
 
 @MainActor struct SettingsView: View {
     @ObservedObject var settings = Settings.shared
@@ -7,11 +8,6 @@ import AppKit
     @State private var launchAtLogin = AppDelegate.launchesAtLogin
     @State private var loginError: String?
     @State private var permissionsTick = 0
-
-    private let locales: [(String, String)] = [
-        ("de-DE", "Deutsch"), ("en-US", "English (US)"), ("en-GB", "English (UK)"),
-        ("fr-FR", "Français"), ("es-ES", "Español"), ("it-IT", "Italiano"),
-    ]
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -28,15 +24,25 @@ import AppKit
                     .font(Theme.small).foregroundColor(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 12)
+                DotToggle(isOn: $settings.capsLatch, label: "Feststelltaste hält Tasten gedrückt")
+                    .padding(.top, 20)
+                Text("Ist die Feststelltaste an, bleibt die nächste gedrückte Taste (z. B. W) gedrückt – etwa zum Dauerlaufen in Spielen. Loslassen: die Taste noch einmal drücken oder die Feststelltaste ausschalten. Braucht die Bedienungshilfen-Freigabe.")
+                    .font(Theme.small).foregroundColor(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 6)
                 Spacer().frame(height: 48)
 
                 SectionLabel(text: "Sprache")
                 HStack(spacing: 28) {
-                    ForEach(locales, id: \.0) { id, name in
-                        PlainTextButton(title: name, prominent: settings.localeIdentifier == id) { settings.localeIdentifier = id }
+                    ForEach(SpeechLanguage.all) { language in
+                        PlainTextButton(title: language.name, prominent: settings.localeIdentifier == language.id) {
+                            settings.localeIdentifier = language.id
+                        }
                     }
                 }
-                .padding(.bottom, 12)
+                .padding(.bottom, 16)
+                SpeechEngineSettings()
+                    .padding(.bottom, 16)
                 DotToggle(isOn: $settings.pasteAfterDictation, label: "Diktat direkt in die aktive App einfügen")
                     .padding(.bottom, 14)
                 DotToggle(isOn: $settings.recordMicInScreenRecording, label: "Bei Bildschirmaufnahmen auch das Mikrofon aufnehmen")
@@ -108,7 +114,9 @@ import AppKit
                 PermissionRow(name: "Mikrofon", detail: "für Diktat und Meetings", state: Permissions.microphone) {
                     Task { _ = await Permissions.requestMicrophone(); permissionsTick += 1 }
                 }
-                PermissionRow(name: "Spracherkennung", detail: "lokal auf dem Gerät", state: Permissions.speech) {
+                PermissionRow(name: "Spracherkennung",
+                              detail: SpeechBackendFactory.needsSpeechPermission ? "lokal auf dem Gerät" : "nur für Apples Erkennung nötig",
+                              state: Permissions.speech) {
                     Task { _ = await Permissions.requestSpeech(); permissionsTick += 1 }
                 }
                 PermissionRow(name: "Bildschirmaufnahme", detail: "für Systemton und Aufnahmen", state: Permissions.screen) {

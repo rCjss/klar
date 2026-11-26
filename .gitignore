@@ -2,3 +2,7 @@
 build/
 *.xcodeproj
 .DS_Store
+bin/
+obj/
+windows/dist/
+Vendor/

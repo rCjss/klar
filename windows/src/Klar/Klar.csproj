@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Klar</RootNamespace>
+    <AssemblyName>Klar</AssemblyName>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- Erlaubt das Übersetzen auf macOS und Linux; ausgeführt wird nur unter Windows. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Resources\Klar.ico</ApplicationIcon>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- Die DPI-Einstellung steht bewusst im Manifest: Die Oberfläche ist WPF, WinForms liefert nur das Infobereich-Symbol. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- WPF und WinForms teilen sich viele Typnamen; WinForms wird nur für das Infobereich-Symbol gebraucht. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+    <Using Include="System.IO" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Klar.Core\Klar.Core.csproj" />
+    <ProjectReference Include="..\KlarRecorder\KlarRecorder.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" SetPlatform="Platform=x64" Private="false" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <PackageReference Include="XamlAnimatedGif" Version="2.3.2" />
+    <Resource Include="Resources\Klar.ico" />
+  </ItemGroup>
+
+  <!-- Das Aufnahme-Hilfsprogramm (.NET Framework 4.8) liegt in einem Unterordner neben Klar.exe. -->
+  <Target Name="CopyRecorder" AfterTargets="Build">
+    <ItemGroup>
+      <RecorderBuilt Include="..\KlarRecorder\bin\$(Configuration)\**\*" Exclude="..\KlarRecorder\bin\$(Configuration)\**\*.pdb;..\KlarRecorder\bin\$(Configuration)\**\*.xml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(RecorderBuilt)" DestinationFolder="$(OutDir)recorder\%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="PublishRecorder" AfterTargets="Publish">
+    <ItemGroup>
+      <RecorderPublished Include="..\KlarRecorder\bin\$(Configuration)\**\*" Exclude="..\KlarRecorder\bin\$(Configuration)\**\*.pdb;..\KlarRecorder\bin\$(Configuration)\**\*.xml" />
+      <!-- Whisper liefert Bibliotheken für alle Plattformen mit; gebraucht wird nur Windows x64. -->
+      <ForeignRuntimes Include="$(PublishDir)runtimes\**\*" Exclude="$(PublishDir)runtimes\win-x64\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(RecorderPublished)" DestinationFolder="$(PublishDir)recorder\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Delete Files="@(ForeignRuntimes)" />
+  </Target>
+</Project>

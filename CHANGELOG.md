@@ -2,8 +2,30 @@
 
 Alle nennenswerten Änderungen an Klar. Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/).
 
-## Unveröffentlicht
+## 0.3.0 – 2026-11-26
 
+### Neu
+- **Modellauswahl** auf Mac, Windows und iPhone: Whisper Large-v3, Whisper Large-v3 Turbo und NVIDIA Parakeet
+  TDT 0.6B v3 (auf Mac und iPhone zusätzlich Apples Erkennung). Parakeet läuft über sherpa-onnx, ist sehr schnell,
+  setzt Satzzeichen und erkennt die Sprache selbst. Modelle werden per Größe und SHA-256 geprüft. Die bisherigen
+  Modelle „Schnell“ und „Ausgewogen“ entfallen; wer sie gewählt hatte, bekommt Large-v3 Turbo.
+- **Sprachen**: Deutsch, Englisch, Rumänisch, Polnisch, Türkisch. Parakeet kennt kein Türkisch – Klar weist
+  darauf hin, statt still falsch zu erkennen.
+- **Feststelltaste hält Tasten gedrückt** (Mac und Windows, in den Einstellungen einschaltbar): Feststelltaste an
+  + Taste (z. B. W) = Taste bleibt gedrückt, bis man sie erneut drückt oder die Feststelltaste ausschaltet.
+- **iPhone-App** unter `ios/` (SwiftUI): Diktieren antippen, sprechen, Text wird kopiert; Teilen, Verlauf,
+  Modell- und Sprachwahl. Alle Modelle laufen lokal auf dem iPhone. Gebaut und im Simulator geprüft per
+  GitHub-Workflow, der eine unsignierte `.ipa` liefert – siehe `ios/README.md`.
+
+### Aus der Vorversion (bisher unveröffentlicht)
+- **Whisper als zweite Spracherkennung auf dem Mac**: Unter „Einstellungen → Sprache“ lässt sich zwischen Apples
+  Erkennung und Whisper wählen. Gilt für Diktat und Meetings, läuft lokal. Whisper rechnet
+  in einem eigenen Hilfsprozess ohne Zugriff auf Klars Freigaben; die Hardened Runtime der App bleibt unverändert.
+  Selbsttest: `Klar --whisper-selftest aufnahme.wav`.
+- Sprachbefehle werden toleranter erkannt („Ein Fügen-Signatur“ zählt als „einfügen Signatur“).
+- **Windows-Fassung** unter `windows/` (C#, .NET 10, WPF) mit gleichem Funktionsumfang. Spracherkennung dort lokal
+  über Whisper, Bildschirmaufnahme als `.mp4`. Per GitHub-Workflow unter Windows geprüft; Mikrofon, Systemton und
+  Bildschirmaufnahme sind noch auf keinem echten PC erprobt – siehe `windows/README.md`.
 - Im Fenster „Zwischenablage“ kopiert ein Klick auf die Zeile sofort; kurze Rückmeldung „Kopiert“.
 
 ## 0.2.0 – 2026-10-17

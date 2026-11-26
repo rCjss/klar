@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import KlarSpeech
 
 final class Settings: ObservableObject {
     static let shared = Settings()
@@ -14,6 +15,12 @@ final class Settings: ObservableObject {
     @Published var awakeDuringCapture: Bool { didSet { d.set(awakeDuringCapture, forKey: "awakeDuringCapture") } }
     @Published var snippets: [Snippet] { didSet { save("snippets", snippets) } }
     @Published var localeIdentifier: String { didSet { d.set(localeIdentifier, forKey: "locale") } }
+    /// „apple“ oder „whisper“ (= lokales Modell) – gilt für Diktat und Meetings.
+    @Published var speechEngine: String { didSet { d.set(speechEngine, forKey: "speechEngine") } }
+    /// Lokales Modell: „large-v3“, „large-v3-turbo“ oder „parakeet-tdt-0.6b-v3“.
+    @Published var whisperModel: String { didSet { d.set(whisperModel, forKey: "whisperModel") } }
+    /// Feststelltaste an + Taste = Taste bleibt gedrückt (siehe KeyLatch).
+    @Published var capsLatch: Bool { didSet { d.set(capsLatch, forKey: "capsLatch") } }
     @Published var commandPrefix: String { didSet { d.set(commandPrefix, forKey: "commandPrefix") } }
     @Published var historyLimit: Int { didSet { d.set(historyLimit, forKey: "historyLimit") } }
     @Published var pasteAfterDictation: Bool { didSet { d.set(pasteAfterDictation, forKey: "pasteAfterDictation") } }
@@ -35,7 +42,10 @@ final class Settings: ObservableObject {
         snippets = Self.load("snippets") ?? [
             Snippet(trigger: "Signatur", text: "Viele Grüße\n" + NSFullUserName()),
         ]
-        localeIdentifier = d.string(forKey: "locale") ?? "de-DE"
+        localeIdentifier = SpeechLanguage.find(d.string(forKey: "locale")).id
+        speechEngine = d.string(forKey: "speechEngine") ?? SpeechEngine.apple.rawValue
+        whisperModel = SpeechModels.find(d.string(forKey: "whisperModel")).id
+        capsLatch = d.object(forKey: "capsLatch") as? Bool ?? false
         commandPrefix = d.string(forKey: "commandPrefix") ?? "einfügen"
         historyLimit = d.object(forKey: "historyLimit") as? Int ?? 500
         pasteAfterDictation = d.object(forKey: "pasteAfterDictation") as? Bool ?? true

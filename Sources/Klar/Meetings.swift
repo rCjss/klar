@@ -83,14 +83,19 @@ final class MeetingRecorder: ObservableObject {
 
     private func begin() async {
         guard await Permissions.requestMicrophone() else { errorMessage = "Kein Mikrofonzugriff."; return }
-        guard await Permissions.requestSpeech() else { errorMessage = "Keine Freigabe für Spracherkennung."; return }
+        if SpeechBackendFactory.needsSpeechPermission {
+            guard await Permissions.requestSpeech() else { errorMessage = "Keine Freigabe für Spracherkennung."; return }
+        }
         guard Permissions.requestScreen() else {
             errorMessage = "Bildschirmaufnahme-Freigabe fehlt (für Systemton)."; return
         }
         let locale = Settings.shared.localeIdentifier
         guard let me = await SpeechBackendFactory.make(localeIdentifier: locale),
               let others = await SpeechBackendFactory.make(localeIdentifier: locale) else {
-            errorMessage = "Spracherkennung nicht verfügbar."; return
+            errorMessage = SpeechEngine.current == .whisper
+                ? SpeechBackendFactory.unavailableMessage(localeIdentifier: locale)
+                : "Spracherkennung nicht verfügbar."
+            return
         }
         meSession = me
         othersSession = others

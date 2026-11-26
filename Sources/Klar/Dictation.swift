@@ -99,16 +99,23 @@ final class DictationEngine: ObservableObject {
 
     private func beginListening() async {
         guard await Permissions.requestMicrophone() else { fail("Kein Mikrofonzugriff."); return }
-        guard await Permissions.requestSpeech() else { fail("Keine Freigabe für Spracherkennung."); return }
+        if SpeechBackendFactory.needsSpeechPermission {
+            guard await Permissions.requestSpeech() else { fail("Keine Freigabe für Spracherkennung."); return }
+        }
         committed = []
         liveText = ""
         committedText = ""
         partialText = ""
         state = .listening
         overlay.show()
-        guard let session = await SpeechBackendFactory.make(localeIdentifier: Settings.shared.localeIdentifier,
+        let settings = Settings.shared
+        let locale = settings.localeIdentifier
+        let vocabulary = VoiceCommands.recognitionHint(
+            snippets: settings.snippets, prefix: settings.commandPrefix,
+            languageCode: Locale(identifier: locale).language.languageCode?.identifier ?? "de")
+        guard let session = await SpeechBackendFactory.make(localeIdentifier: locale, vocabulary: vocabulary,
                                                              status: { [weak self] s in self?.liveText = s }) else {
-            fail("Spracherkennung für \(Settings.shared.localeIdentifier) nicht verfügbar."); return
+            fail(SpeechBackendFactory.unavailableMessage(localeIdentifier: locale)); return
         }
         self.session = session
         liveText = ""
@@ -158,7 +165,12 @@ final class DictationEngine: ObservableObject {
         engine?.inputNode.removeTap(onBus: 0)
         engine?.stop()
         engine = nil
-        if let s = session { Task { await s.stop() } }
+        if let s = session {
+            // Was nach dem Abbruch noch erkannt wird, darf nicht im nächsten Diktat landen.
+            s.onPartial = nil
+            s.onCommitted = nil
+            Task { await s.stop() }
+        }
         session = nil
         state = .idle
         overlay.hide()

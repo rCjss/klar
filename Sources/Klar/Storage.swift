@@ -20,6 +20,9 @@ enum Storage {
 
     static let gifs: URL = { makeDir(root.appendingPathComponent("GIFs", isDirectory: true)) }()
 
+    /// Whisper-Sprachmodelle (nur vorhanden, wenn Whisper als Erkennung gewählt wurde).
+    static let models: URL = { makeDir(root.appendingPathComponent("Models", isDirectory: true)) }()
+
     static let recordings: URL = {
         let base = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
         return makeDir(base.appendingPathComponent("Klar", isDirectory: true))

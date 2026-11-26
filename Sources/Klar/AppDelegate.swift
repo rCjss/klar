@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusItem()
         registerHotkeys()
         observeSettings()
+        WhisperEngine.warmUpIfSelected()
         #if DEBUG
         // Steuerung per Skript – nur im Debug-Build. Im Release gäbe das jedem lokalen Prozess
         // die Möglichkeit, Diktat (Mikrofon) oder das Panel auszulösen.
@@ -47,6 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         AwakeManager.shared.releaseLidModeOnQuit()
+        WhisperEngine.shared.shutdown()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -137,6 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hk.set(id: HotkeyID.meeting, hotkey: settings.meetingHotkey) { MeetingRecorder.shared.toggle() }
         hk.set(id: HotkeyID.recording, hotkey: settings.recordingHotkey) { ScreenRecorder.shared.toggle() }
         hk.set(id: HotkeyID.awake, hotkey: settings.awakeHotkey) { AwakeManager.shared.toggle() }
+        KeyLatch.shared.apply(enabled: settings.capsLatch)
     }
 
     private var observers: [Any] = []
@@ -148,6 +151,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         observers.append(settings.$awakeHotkey.dropFirst().sink { [weak self] _ in Task { @MainActor in self?.registerHotkeys() } })
         observers.append(settings.$awakeKeepsDisplay.dropFirst().sink { _ in Task { @MainActor in AwakeManager.shared.refresh() } })
         observers.append(settings.$awakeDuringCapture.dropFirst().sink { _ in Task { @MainActor in AppDelegate.shared?.refreshStatusIcon() } })
+        observers.append(settings.$capsLatch.dropFirst().sink { on in Task { @MainActor in
+            if on && !AXIsProcessTrusted() {
+                AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary)
+            }
+            KeyLatch.shared.apply(enabled: on)
+        } })
         observers.append(settings.$showInDock.dropFirst().sink { [weak self] _ in Task { @MainActor in self?.applyDockSetting() } })
     }
 

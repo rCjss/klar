@@ -89,7 +89,7 @@ final class MeetingSummary: ObservableObject {
     }
     #endif
 
-    static func chunk(_ text: String, maxWords: Int) -> [String] {
+    nonisolated static func chunk(_ text: String, maxWords: Int) -> [String] {
         var chunks: [String] = []
         var current: [String] = []
         var count = 0

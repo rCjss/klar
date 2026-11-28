@@ -214,7 +214,7 @@ final class Meeting: ObservableObject {
         current!.lines.append(MeetingLine(offset: Date().timeIntervalSince(started), text: t))
     }
 
-    static func clock(_ t: TimeInterval) -> String {
+    nonisolated static func clock(_ t: TimeInterval) -> String {
         let s = Int(t)
         return s >= 3600 ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60)
                          : String(format: "%02d:%02d", s / 60, s % 60)

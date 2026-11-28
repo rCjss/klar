@@ -1,10 +1,10 @@
 # Klar fürs iPhone
 
-Diktieren mit Modellauswahl: antippen, sprechen, der Text wird kopiert und lässt sich teilen. Alles läuft lokal
+Diktieren und Meetings mitschreiben, mit Modellauswahl. Alles läuft lokal
 auf dem iPhone, der Ton verlässt das Gerät nicht.
 
 Auf dem iPhone gibt es keine systemweiten Tastenkürzel und keinen Zwischenablage-Verlauf im Hintergrund.
-Die iPhone-App beschränkt sich deshalb aufs Diktat. Zwischenablage, Meetings, GIFs, Bildschirmaufnahme und
+Die iPhone-App beschränkt sich deshalb auf Diktat und Meetings. Zwischenablage, GIFs, Bildschirmaufnahme und
 „Cocaine“ gibt es nur auf Mac und Windows.
 
 ## Funktionen
@@ -12,6 +12,11 @@ Die iPhone-App beschränkt sich deshalb aufs Diktat. Zwischenablage, Meetings, G
 - **Diktieren** – großer Knopf, Text erscheint während bzw. nach jeder Sprechpause, am Ende automatisch kopiert
 - **Erkennung**: Apple, Whisper Large-v3 (1,1 GB), Whisper Large-v3 Turbo (574 MB), Parakeet TDT 0.6B v3 (671 MB)
 - **Sprachen**: Deutsch, Englisch, Rumänisch, Polnisch, Türkisch (Parakeet ohne Türkisch)
+- **Meetings** – iPhone auf den Tisch legen, „Meeting starten“: fortlaufendes Transkript mit Zeitmarken, läuft
+  bei gesperrtem Bildschirm weiter. Danach Zusammenfassung über Apple Intelligence (iOS 26, ab iPhone 15 Pro),
+  Teilen und Kopieren. Aufgenommen wird nur, was das Mikrofon hört – den Ton von Zoom, Teams oder Telefonaten
+  gibt iOS nicht frei (Lautsprecher hilft). Mit Apples Erkennung kann iOS die Erkennung bei gesperrtem
+  Bildschirm drosseln; für lange Meetings Whisper Turbo oder Parakeet wählen.
 - **Verlauf** der letzten 200 Diktate, antippen kopiert, wischen löscht
 - **Teilen** an jede App
 

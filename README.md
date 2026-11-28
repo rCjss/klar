@@ -6,7 +6,7 @@ Minimalistische Menüleisten-App für macOS: Zwischenablage-Verlauf, Diktat mit 
 Meeting-Transkription mit Zusammenfassung, GIF-Suche, Bildschirmaufnahme mit Systemton und
 „Cocaine“ zum Wachhalten. Schwarz-Weiß, viel Weißraum, keine Deko.
 
-Aktuelle Version: 0.3.0 – siehe [CHANGELOG](CHANGELOG.md).
+Aktuelle Version: 0.4.0 – siehe [CHANGELOG](CHANGELOG.md).
 
 Eine Windows-Fassung mit gleichem Funktionsumfang liegt unter [windows/](windows/README.md), eine
 iPhone-App zum Diktieren unter [ios/](ios/README.md).

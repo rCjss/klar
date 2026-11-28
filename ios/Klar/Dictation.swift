@@ -42,39 +42,13 @@ final class Dictation: ObservableObject {
             fail("Kein Mikrofonzugriff. Bitte in den iPhone-Einstellungen unter Klar erlauben.")
             return
         }
-        let settings = AppSettings.shared
-        let language = settings.language
-        engineLabel = settings.engineLabel
-
+        engineLabel = AppSettings.shared.engineLabel
         let backend: Backend
-        if let model = settings.localModel {
-            guard model.supports(languageCode: language.code) else {
-                fail("\(model.label) kennt kein \(language.name). Bitte ein Whisper-Modell wählen.")
-                return
-            }
-            let store = LocalModels.store
-            if !store.isDownloaded(model) {
-                status = "Sprachmodell wird geladen …"
-                let watch = store.$progress.sink { [weak self] p in
-                    Task { @MainActor in self?.status = "Sprachmodell wird geladen … \(Int(p * 100)) %" }
-                }
-                let ok = await store.ensure(model)
-                watch.cancel()
-                guard ok else { fail(store.error ?? "Sprachmodell konnte nicht geladen werden."); return }
-                status = ""
-            }
-            backend = LocalBackend(modelPath: store.path(of: model), language: language.code)
-        } else {
-            guard await Self.requestSpeech() else {
-                fail("Keine Freigabe für die Spracherkennung. Bitte in den iPhone-Einstellungen unter Klar erlauben.")
-                return
-            }
-            guard let apple = AppleBackend(localeIdentifier: language.id) else {
-                fail("Apples Spracherkennung für \(language.name) ist nicht verfügbar.")
-                return
-            }
-            backend = apple
+        switch await Recognition.makeBackend(status: { [weak self] in self?.status = $0 }) {
+        case .success(let b): backend = b
+        case .failure(let problem): fail(problem.message); return
         }
+        status = ""
         backend.onCommitted = { [weak self] t in self?.commit(t) }
         backend.onPartial = { [weak self] t in self?.partial = t }
 
@@ -152,22 +126,17 @@ final class Dictation: ObservableObject {
         UIApplication.shared.isIdleTimerDisabled = false
     }
 
-    private nonisolated static func rms(_ buffer: AVAudioPCMBuffer) -> Float {
+    nonisolated static func rms(_ buffer: AVAudioPCMBuffer) -> Float {
         guard let data = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return 0 }
         var sum: Float = 0
         for i in 0..<Int(buffer.frameLength) { sum += data[i] * data[i] }
         return (sum / Float(buffer.frameLength)).squareRoot()
     }
 
-    private static func requestMicrophone() async -> Bool {
+    static func requestMicrophone() async -> Bool {
         await AVAudioApplication.requestRecordPermission()
     }
 
-    private static func requestSpeech() async -> Bool {
-        await withCheckedContinuation { cont in
-            SFSpeechRecognizer.requestAuthorization { cont.resume(returning: $0 == .authorized) }
-        }
-    }
 
     enum DictationError: LocalizedError {
         case noInput
@@ -176,6 +145,43 @@ final class Dictation: ObservableObject {
 }
 
 // MARK: - Erkennung
+
+struct RecognitionProblem: Error { let message: String }
+
+/// Wählt die Erkennung nach den Einstellungen und lädt bei Bedarf das Modell. Gemeinsam für Diktat und Meeting.
+@MainActor
+enum Recognition {
+    static func makeBackend(status: @escaping @MainActor (String) -> Void) async -> Result<Backend, RecognitionProblem> {
+        let settings = AppSettings.shared
+        let language = settings.language
+        if let model = settings.localModel {
+            guard model.supports(languageCode: language.code) else {
+                return .failure(.init(message: "\(model.label) kennt kein \(language.name). Bitte ein Whisper-Modell wählen."))
+            }
+            let store = LocalModels.store
+            if !store.isDownloaded(model) {
+                status("Sprachmodell wird geladen …")
+                let watch = store.$progress.sink { p in
+                    Task { @MainActor in status("Sprachmodell wird geladen … \(Int(p * 100)) %") }
+                }
+                let ok = await store.ensure(model)
+                watch.cancel()
+                guard ok else { return .failure(.init(message: store.error ?? "Sprachmodell konnte nicht geladen werden.")) }
+            }
+            return .success(LocalBackend(modelPath: store.path(of: model), language: language.code))
+        }
+        let granted = await withCheckedContinuation { cont in
+            SFSpeechRecognizer.requestAuthorization { cont.resume(returning: $0 == .authorized) }
+        }
+        guard granted else {
+            return .failure(.init(message: "Keine Freigabe für die Spracherkennung. Bitte in den iPhone-Einstellungen unter Klar erlauben."))
+        }
+        guard let apple = AppleBackend(localeIdentifier: language.id) else {
+            return .failure(.init(message: "Apples Spracherkennung für \(language.name) ist nicht verfügbar."))
+        }
+        return .success(apple)
+    }
+}
 
 /// Gemeinsame Schnittstelle für Apples Erkennung und die lokalen Modelle.
 @MainActor
@@ -382,14 +388,18 @@ final class RecognizerHost: @unchecked Sendable {
 
     private let queue = DispatchQueue(label: "klar.recognizer", qos: .userInitiated)
     private let recognizer = LocalRecognizer()
+    /// Während eines Meetings nicht im Hintergrund freigeben.
+    var keepLoaded = false
 
     private init() {
         NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification,
                                                object: nil, queue: nil) { [weak self] _ in self?.unload() }
         NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification,
                                                object: nil, queue: nil) { [weak self] _ in
-            // Nach dem Abschluss eines laufenden Diktats freigeben – die Queue arbeitet der Reihe nach.
-            self?.unload()
+            // Läuft ein Meeting, rechnet die App im Hintergrund weiter und braucht das Modell.
+            // Sonst nach dem Abschluss eines laufenden Diktats freigeben – die Queue arbeitet der Reihe nach.
+            guard let self, !self.keepLoaded else { return }
+            self.unload()
         }
     }
 

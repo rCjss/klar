@@ -14,6 +14,7 @@ struct KlarApp: App {
         }
         .onChange(of: phase) { _, newPhase in
             // Im Hintergrund darf iOS die App jederzeit beenden – laufendes Diktat sauber abschließen.
+            // Ein Meeting läuft dagegen weiter (Hintergrundmodus „Audio“).
             if newPhase == .background { Dictation.shared.stop() }
         }
     }

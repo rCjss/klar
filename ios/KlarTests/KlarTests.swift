@@ -32,6 +32,23 @@ final class KlarTests: XCTestCase {
         XCTAssertNotNil(s.flush())
     }
 
+    func testMeetingTranscriptAndClock() {
+        var record = MeetingRecord(title: "Meeting", date: Date(), engine: "Parakeet TDT 0.6B v3")
+        record.lines = [MeetingLine(offset: 5, text: "Hallo zusammen."), MeetingLine(offset: 3725, text: "Danke.")]
+        XCTAssertEqual(record.transcript, "[00:05] Hallo zusammen.\n[1:02:05] Danke.")
+        XCTAssertTrue(record.shareText.hasPrefix("Meeting\n"))
+        record.summary = "Kurzfassung"
+        XCTAssertTrue(record.shareText.contains("Kurzfassung\n\nTranskript"))
+    }
+
+    func testSummaryChunksLongTranscripts() {
+        let line = Array(repeating: "wort", count: 100).joined(separator: " ")
+        let text = Array(repeating: line, count: 25).joined(separator: "\n") // 2500 Wörter
+        let chunks = MeetingSummary.chunk(text, maxWords: 900)
+        XCTAssertEqual(chunks.count, 3)
+        XCTAssertEqual(chunks.joined(separator: "\n"), text)
+    }
+
     func testParakeet() throws { try recognize(SpeechModels.parakeetV3, languages: ["de", "en", "ro", "pl"]) }
 
     func testWhisperTurbo() throws { try recognize(SpeechModels.whisperLargeV3Turbo, languages: ["de", "en", "ro", "pl", "tr"]) }

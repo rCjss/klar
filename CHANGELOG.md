@@ -2,6 +2,15 @@
 
 Alle nennenswerten Änderungen an Klar. Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/).
 
+## 0.4.0 – 2026-11-28
+
+### Neu
+- **Meetings auf dem iPhone**: Umschalter „Diktat · Meeting“. Das Meeting wird über das Mikrofon fortlaufend
+  transkribiert (Apple, Whisper oder Parakeet), mit Zeitmarken, und läuft bei gesperrtem Bildschirm weiter.
+  Gespeicherte Meetings lassen sich öffnen, teilen, kopieren und löschen. Danach entsteht eine Zusammenfassung
+  über Apple Intelligence auf dem Gerät (iOS 26, ab iPhone 15 Pro). Den Ton anderer Apps (Zoom, Teams, Telefon)
+  gibt iOS nicht frei – aufgenommen wird, was das Mikrofon hört.
+
 ## 0.3.0 – 2026-11-26
 
 ### Neu

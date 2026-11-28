@@ -9,7 +9,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.3.0"
+    MARKETING_VERSION: "0.4.0"
     CURRENT_PROJECT_VERSION: "1"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
@@ -50,7 +50,9 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false
-        NSMicrophoneUsageDescription: Klar braucht das Mikrofon, um dein Diktat in Text umzuwandeln.
+        NSMicrophoneUsageDescription: Klar braucht das Mikrofon, um Diktate und Meetings in Text umzuwandeln.
+        # Meetings laufen bei gesperrtem Bildschirm weiter.
+        UIBackgroundModes: [audio]
         NSSpeechRecognitionUsageDescription: Für die Erkennung über Apple nutzt Klar die Spracherkennung von iOS.
   KlarTests:
     type: bundle.unit-test

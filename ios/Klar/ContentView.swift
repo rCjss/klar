@@ -1,8 +1,11 @@
 import SwiftUI
 
 struct ContentView: View {
+    enum Mode: String { case dictation, meeting }
+
     @ObservedObject private var dictation = Dictation.shared
-    @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var meeting = Meeting.shared
+    @AppStorage("mode") private var mode: Mode = .dictation
     @State private var showSettings = false
     @State private var showHistory = false
 
@@ -10,6 +13,43 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 0) {
             header
             Hairline().padding(.top, 16)
+            if mode == .dictation { DictationPane() } else { MeetingPane() }
+        }
+        .padding(.horizontal, 28)
+        .background(Theme.paper.ignoresSafeArea())
+        .sheet(isPresented: $showSettings) { SettingsView() }
+        .sheet(isPresented: $showHistory) {
+            if mode == .dictation { HistoryView() } else { MeetingListView() }
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Klar").font(Theme.title).foregroundColor(Theme.ink)
+                Spacer()
+                TextButton(title: "Einstellungen") { showSettings = true }
+            }
+            HStack(spacing: 22) {
+                TextButton(title: "Diktat", prominent: mode == .dictation) { mode = .dictation }
+                    .disabled(meeting.isActive)
+                TextButton(title: "Meeting", prominent: mode == .meeting) { mode = .meeting }
+                    .disabled(dictation.isActive)
+                Spacer()
+                TextButton(title: mode == .dictation ? "Verlauf" : "Alle Meetings") { showHistory = true }
+            }
+        }
+        .padding(.top, 12)
+    }
+}
+
+/// Diktat: antippen, sprechen, Text wird kopiert.
+struct DictationPane: View {
+    @ObservedObject private var dictation = Dictation.shared
+    @ObservedObject private var settings = AppSettings.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
             ScrollView(showsIndicators: false) {
                 transcript
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -18,21 +58,6 @@ struct ContentView: View {
             Hairline()
             footer
         }
-        .padding(.horizontal, 28)
-        .background(Theme.paper.ignoresSafeArea())
-        .sheet(isPresented: $showSettings) { SettingsView() }
-        .sheet(isPresented: $showHistory) { HistoryView() }
-    }
-
-    private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("Klar").font(Theme.title).foregroundColor(Theme.ink)
-            Spacer()
-            TextButton(title: "Verlauf") { showHistory = true }
-                .padding(.trailing, 18)
-            TextButton(title: "Einstellungen") { showSettings = true }
-        }
-        .padding(.top, 12)
     }
 
     @ViewBuilder private var transcript: some View {
